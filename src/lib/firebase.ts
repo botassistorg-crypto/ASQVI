@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import axios from 'axios';
 // @ts-ignore
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -26,18 +27,25 @@ async function testConnection() {
 }
 testConnection();
 
-export const signInWithGoogle = async () => {
-  console.log("Starting Google Sign-In...");
+export const signInWithPasscode = async (passcode: string) => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    console.log("Sign-In successful:", result.user.email);
-    return result.user;
+    const response = await axios.post('/api/admin/login', { passcode });
+    const data = response.data;
+    
+    if (data.success) {
+      // Store passcode in session for proxy writes
+      sessionStorage.setItem('admin_passcode', passcode);
+      return {
+        email: data.email,
+        uid: 'admin-manual',
+        displayName: 'System Admin',
+        photoURL: 'https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff'
+      };
+    } else {
+      throw new Error("Invalid passcode.");
+    }
   } catch (error: any) {
-    console.error("Firebase Login Error Detail:", {
-      code: error.code,
-      message: error.message,
-      stack: error.stack
-    });
-    throw error;
+    console.error("Passcode login failed:", error);
+    throw new Error(error.response?.data?.error || "Invalid passcode.");
   }
 };
