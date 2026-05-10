@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getCollection, createDocument, updateDocument } from '../../lib/firestore';
+import { getCollection } from '../../lib/firestore';
+import { proxyWrite, proxyDelete } from '../../lib/adminProxy';
 import { Category } from '../../types';
 import { Plus, Edit2, Trash2, X, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../../lib/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -43,21 +42,25 @@ export default function AdminCategories() {
     e.preventDefault();
     try {
       if (editingCategory) {
-        await updateDocument('categories', editingCategory.id, formData);
+        await proxyWrite('categories', editingCategory.id, formData);
       } else {
-        await createDocument('categories', formData);
+        await proxyWrite('categories', null, formData);
       }
       setIsModalOpen(false);
       fetchData();
     } catch (error) {
-      alert('Save failed');
+      alert('Save failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure? This might affect products in this category.')) {
-      await deleteDoc(doc(db, 'categories', id));
-      fetchData();
+      try {
+        await proxyDelete('categories', id);
+        fetchData();
+      } catch (error) {
+        alert('Delete failed');
+      }
     }
   };
 
