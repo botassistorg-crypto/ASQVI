@@ -45,7 +45,16 @@ export const signInWithPasscode = async (passcode: string) => {
       throw new Error("Invalid passcode.");
     }
   } catch (error: any) {
-    console.error("Passcode login failed:", error);
-    throw new Error(error.response?.data?.error || "Invalid passcode.");
+    console.error("Passcode login failed fully:", error);
+    let errorMessage = "Invalid passcode.";
+    
+    if (error.response?.data) {
+      errorMessage = error.response.data.error || error.response.data.message || errorMessage;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    // Ensure we always throw a string
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
   }
 };
