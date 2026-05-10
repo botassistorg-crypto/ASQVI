@@ -10,12 +10,16 @@ export const db = initializeFirestore(app, {
 }, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Connection test as per instructions
 async function testConnection() {
   try {
+    console.log("Testing Firestore connection...");
     await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firestore connection successful.");
   } catch (error) {
+    console.error("Firestore connection test failed:", error);
     if(error instanceof Error && error.message.includes('the client is offline')) {
       console.error("Please check your Firebase configuration.");
     }
@@ -24,11 +28,13 @@ async function testConnection() {
 testConnection();
 
 export const signInWithGoogle = async () => {
+  console.log("Starting Google Sign-In...");
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    console.log("Sign-In successful:", result.user.email);
     return result.user;
   } catch (error) {
-    console.error("Error signing in with Google", error);
+    console.error("Error signing in with Google:", error);
     throw error;
   }
 };
