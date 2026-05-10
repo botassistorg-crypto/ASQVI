@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { User, signOut } from 'firebase/auth';
-import { auth, signInWithGoogle } from '../lib/firebase';
+import { auth, signInWithPasscode } from '../lib/firebase';
 import { ADMIN_EMAIL } from '../types';
 import { Menu, X, ShoppingBag, User as UserIcon, LogOut, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -27,20 +27,17 @@ export default function Navbar({ user, isAdmin }: NavbarProps) {
   const handleLogin = async () => {
     try {
       console.log("Login button clicked");
-      const user = await signInWithGoogle();
+      const passcode = prompt("Enter Admin Passcode:");
+      if (!passcode) return;
+      
+      const user = await signInWithPasscode(passcode);
       if (user && user.email !== ADMIN_EMAIL) {
-        await signOut(auth);
+        await auth.signOut();
         alert('Access Denied: Only the assigned admin can access the backend.');
       }
     } catch (error: any) {
       console.error("Login component error:", error);
-      if (error.code === 'auth/popup-blocked') {
-        alert('POPUP BLOCKED: Please click the "Pop-up blocked" icon in your browser address bar and allow popups for this site to log in.');
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        // Silently handle cancelled popup
-      } else {
-        alert(`Login failed (${error.code || 'unknown'}). Please check your browser connection and ensure your Google account is logged in. Error: ${error.message}`);
-      }
+      alert(`Login failed: ${error.message}`);
     }
   };
 
