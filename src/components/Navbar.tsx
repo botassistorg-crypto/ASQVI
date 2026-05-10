@@ -26,6 +26,7 @@ export default function Navbar({ user, isAdmin }: NavbarProps) {
 
   const handleLogin = async () => {
     try {
+      console.log("Login button clicked");
       const user = await signInWithGoogle();
       if (user && user.email !== ADMIN_EMAIL) {
         await signOut(auth);
@@ -34,9 +35,11 @@ export default function Navbar({ user, isAdmin }: NavbarProps) {
     } catch (error: any) {
       console.error("Login component error:", error);
       if (error.code === 'auth/popup-blocked') {
-        alert('Please allow popups for this site to log in.');
+        alert('POPUP BLOCKED: Please click the "Pop-up blocked" icon in your browser address bar and allow popups for this site to log in.');
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        // Silently handle cancelled popup
       } else {
-        alert('Login failed. Please try again or check console for details.');
+        alert(`Login failed (${error.code || 'unknown'}). Please check your browser connection and ensure your Google account is logged in. Error: ${error.message}`);
       }
     }
   };
