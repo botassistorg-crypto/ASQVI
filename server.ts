@@ -11,50 +11,87 @@ import firebaseConfig from "./firebase-applet-config.json";
 
 dotenv.config();
 
-// Initialize Firebase Admin for server-side trusted operations
-// This uses Application Default Credentials in Cloud Run
+// Initialize Firebase Admin
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: firebaseConfig.projectId
   });
 }
 
-const adminDb = admin.firestore();
-
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  
+  // Initialize adminDb inside startServer to ensure initialization
+  const adminDb = admin.firestore();
 
   app.use(express.json());
+  
+  // Debug middleware to log all API requests
+  app.use("/api", (req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+  });
+
+  // Helper to get Apps Script URL from Firestore
+  async function getAppsScriptUrl() {
+    try {
+      const settingsDoc = await getDoc(doc(db, "settings", "general"));
+      return settingsDoc.data()?.appsScriptUrl;
+    } catch (error) {
+      console.error("Error fetching Apps Script URL:", error);
+      return null;
+    }
+  }
+
+  // Helper to verify passcode against Apps Script
+  async function verifyWithAppsScript(passcode: string) {
+    const appsScriptUrl = await getAppsScriptUrl();
+    if (!appsScriptUrl) {
+      console.error("Apps Script URL not configured.");
+      return { success: false, error: "Apps Script URL not configured in settings." };
+    }
+
+    try {
+      const response = await axios.post(appsScriptUrl, { 
+        action: "verify", 
+        passcode: passcode 
+      });
+      // GAS returns JSON in the response.data
+      return response.data;
+    } catch (error) {
+      console.error("Apps Script Verification failed:", error);
+      return { success: false, error: "Connection to Apps Script failed." };
+    }
+  }
 
   // API Route: Admin Password Verification
-  app.post("/api/admin/login", (req, res) => {
+  app.post("/api/admin/login", async (req, res) => {
     const { passcode } = req.body;
-    const secret = process.env.VITE_ADMIN_PASSCODE;
     
-    console.log("Login attempt received");
+    console.log("Login attempt received via Apps Script proxy");
     
-    if (!secret) {
-      console.error("VITE_ADMIN_PASSCODE is not set in process.env");
-      return res.status(500).json({ error: "ADMIN_PASSCODE not set on server." });
+    if (!passcode) {
+      return res.status(400).json({ error: "Passcode is required." });
     }
+
+    const verification = await verifyWithAppsScript(passcode);
     
-    if (passcode === secret) {
-      console.log("Login successful for admin");
+    if (verification.success) {
+      console.log("Login successful for admin via Apps Script");
       res.json({ success: true, email: "botassist.org@gmail.com" });
     } else {
-      console.log("Login failed: Invalid passcode");
-      res.status(401).json({ success: false, error: "Invalid passcode" });
+      console.log("Login failed: Invalid passcode via Apps Script", verification.error);
+      res.status(401).json({ success: false, error: verification.error || "Invalid passcode" });
     }
   });
 
   // API Route: Secure Admin Write Proxy
-  // Bypasses browser-side Firebase Auth domain issues
   app.post("/api/admin/proxy-write", async (req, res) => {
     const { passcode, collection, docId, data } = req.body;
-    const secret = process.env.VITE_ADMIN_PASSCODE;
 
-    if (!secret || passcode !== secret) {
+    const verification = await verifyWithAppsScript(passcode);
+    if (!verification.success) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -74,9 +111,9 @@ async function startServer() {
   // API Route: Secure Admin Delete Proxy
   app.post("/api/admin/proxy-delete", async (req, res) => {
     const { passcode, collection, docId } = req.body;
-    const secret = process.env.VITE_ADMIN_PASSCODE;
 
-    if (!secret || passcode !== secret) {
+    const verification = await verifyWithAppsScript(passcode);
+    if (!verification.success) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -98,10 +135,7 @@ async function startServer() {
     }
 
     try {
-      // 1. Fetch Apps Script URL from Firestore
-      const settingsDoc = await getDoc(doc(db, "settings", "general"));
-      const settings = settingsDoc.data();
-      const appsScriptUrl = settings?.appsScriptUrl;
+      const appsScriptUrl = await getAppsScriptUrl();
 
       if (!appsScriptUrl) {
         console.warn("Apps Script URL not configured in Site Engine settings. Skipping notification.");
@@ -112,14 +146,12 @@ async function startServer() {
       }
 
       // 2. Send POST request to Google Apps Script
-      // AXIOS is used because it handles redirects (GAS uses 302/307 redirects)
       await axios.post(appsScriptUrl, orderDetails);
       
       console.log("Notification sent to Apps Script successfully.");
       res.json({ success: true, message: "Notification dispatched to Apps Script" });
     } catch (error) {
       console.error("Apps Script Notification Error:", error);
-      // We return success true anyway because the order IS created in Firestore
       res.json({ 
         success: true, 
         message: "Order logged but Apps Script notification failed." 
