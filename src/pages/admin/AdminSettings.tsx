@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getDocument, upsertDocument } from '../../lib/firestore';
+import { getDocument } from '../../lib/firestore';
+import { proxyWrite } from '../../lib/adminProxy';
 import { SiteSettings } from '../../types';
 import { uploadImage } from '../../services/imageService';
 import { 
@@ -44,11 +45,11 @@ export default function AdminSettings() {
     e.preventDefault();
     setSaving(true);
     try {
-      await upsertDocument('settings', 'general', settings);
+      await proxyWrite('settings', 'general', settings);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
-      alert('Failed to save settings');
+      alert('Failed to save settings: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setSaving(false);
     }
