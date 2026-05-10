@@ -32,13 +32,18 @@ async function startServer() {
     const { passcode } = req.body;
     const secret = process.env.VITE_ADMIN_PASSCODE;
     
+    console.log("Login attempt received");
+    
     if (!secret) {
+      console.error("VITE_ADMIN_PASSCODE is not set in process.env");
       return res.status(500).json({ error: "ADMIN_PASSCODE not set on server." });
     }
     
     if (passcode === secret) {
+      console.log("Login successful for admin");
       res.json({ success: true, email: "botassist.org@gmail.com" });
     } else {
+      console.log("Login failed: Invalid passcode");
       res.status(401).json({ success: false, error: "Invalid passcode" });
     }
   });
