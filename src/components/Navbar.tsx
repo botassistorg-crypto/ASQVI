@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { User, signOut } from 'firebase/auth';
 import { auth, signInWithGoogle } from '../lib/firebase';
+import { ADMIN_EMAIL } from '../types';
 import { Menu, X, ShoppingBag, User as UserIcon, LogOut, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface NavbarProps {
@@ -13,6 +14,32 @@ interface NavbarProps {
 export default function Navbar({ user, isAdmin }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (u) => {
+      if (u && u.email !== ADMIN_EMAIL) {
+        await signOut(auth);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      const user = await signInWithGoogle();
+      if (user && user.email !== ADMIN_EMAIL) {
+        await signOut(auth);
+        alert('Access Denied: Only the assigned admin can access the backend.');
+      }
+    } catch (error: any) {
+      console.error("Login component error:", error);
+      if (error.code === 'auth/popup-blocked') {
+        alert('Please allow popups for this site to log in.');
+      } else {
+        alert('Login failed. Please try again or check console for details.');
+      }
+    }
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -71,7 +98,7 @@ export default function Navbar({ user, isAdmin }: NavbarProps) {
               </div>
             ) : (
               <button
-                onClick={() => signInWithGoogle()}
+                onClick={handleLogin}
                 className="inline-flex items-center px-6 py-2.5 border border-transparent text-xs font-bold uppercase tracking-widest rounded-full text-white bg-forest-500 hover:bg-forest-600 focus:outline-none transition-all shadow-sm"
               >
                 Login
@@ -135,7 +162,7 @@ export default function Navbar({ user, isAdmin }: NavbarProps) {
                 </div>
               ) : (
                 <button
-                  onClick={() => signInWithGoogle()}
+                  onClick={handleLogin}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-sm text-xs font-bold uppercase tracking-widest text-white bg-forest-500 hover:bg-forest-600"
                 >
                   Login
