@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getCollection, createDocument, updateDocument, upsertDocument } from '../../lib/firestore';
+import { getCollection } from '../../lib/firestore';
+import { proxyWrite, proxyDelete } from '../../lib/adminProxy';
 import { Product, Category } from '../../types';
 import { uploadImage } from '../../services/imageService';
 import { 
@@ -14,8 +15,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../../lib/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -106,14 +105,14 @@ export default function AdminProducts() {
       };
 
       if (editingProduct) {
-        await updateDocument('products', editingProduct.id, data);
+        await proxyWrite('products', editingProduct.id, data);
       } else {
-        await createDocument('products', data);
+        await proxyWrite('products', null, data);
       }
       setIsModalOpen(false);
       fetchData();
     } catch (error) {
-      alert('Save failed');
+      alert('Save failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -121,8 +120,12 @@ export default function AdminProducts() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      await deleteDoc(doc(db, 'products', id));
-      fetchData();
+      try {
+        await proxyDelete('products', id);
+        fetchData();
+      } catch (error) {
+        alert('Delete failed');
+      }
     }
   };
 
