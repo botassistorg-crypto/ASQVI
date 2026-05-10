@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getCollection, updateDocument } from '../../lib/firestore';
+import { getCollection } from '../../lib/firestore';
+import { proxyWrite } from '../../lib/adminProxy';
 import { Order } from '../../types';
 import { 
   CheckCircle2, 
@@ -32,8 +33,12 @@ export default function AdminOrders() {
   };
 
   const updateStatus = async (id: string, status: Order['status']) => {
-    await updateDocument('orders', id, { status });
-    fetchData();
+    try {
+      await proxyWrite('orders', id, { status });
+      fetchData();
+    } catch (error) {
+      alert('Failed to update status');
+    }
   };
 
   const filteredOrders = orders.filter(o => {
