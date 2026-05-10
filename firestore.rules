@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && request.auth.token.email == 'botassist.org@gmail.com' && request.auth.token.email_verified == true; 
+    }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidProduct(p) {
+      return p.title is string && p.title.size() <= 200 &&
+             p.description is string && p.description.size() <= 5000 &&
+             p.price is number && p.price >= 0 &&
+             p.imageUrl is string && p.imageUrl.size() <= 1000 &&
+             p.category is string &&
+             p.keys().hasAll(['title', 'description', 'price', 'imageUrl', 'category']) &&
+             p.keys().size() >= 5;
+    }
+
+    function isValidCategory(c) {
+      return c.name is string && c.name.size() <= 100 &&
+             c.slug is string && c.slug.size() <= 100 &&
+             c.keys().hasAll(['name', 'slug']);
+    }
+
+    function isValidOrder(o) {
+      return o.customerName is string && o.customerName.size() <= 200 &&
+             o.customerWhatsapp is string && o.customerWhatsapp.size() <= 50 &&
+             o.senderNumber is string && o.senderNumber.size() <= 50 &&
+             o.productId is string &&
+             o.amount is number && o.amount >= 0 &&
+             o.status in ['pending', 'completed', 'rejected'] &&
+             o.keys().hasAll(['customerName', 'customerWhatsapp', 'senderNumber', 'productId', 'amount', 'status']);
+    }
+
+    function isValidSettings(s) {
+      return s.bKashNumber is string && s.bKashNumber.size() <= 20 &&
+             s.siteName is string && s.siteName.size() <= 100;
+    }
+
+    // Products
+    match /products/{productId} {
+      allow get: if isValidId(productId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidProduct(incoming()) && isValidId(productId);
+      allow update: if isAdmin() && isValidProduct(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Categories
+    match /categories/{categoryId} {
+      allow get: if isValidId(categoryId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidCategory(incoming()) && isValidId(categoryId);
+      allow update: if isAdmin() && isValidCategory(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Orders
+    match /orders/{orderId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidOrder(incoming()) && isValidId(orderId);
+      allow update: if isAdmin() && isValidOrder(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Settings
+    match /settings/general {
+      allow get: if true;
+      allow write: if isAdmin() && isValidSettings(incoming());
+    }
+  }
+}
