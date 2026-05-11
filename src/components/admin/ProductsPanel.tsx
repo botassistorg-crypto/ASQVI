@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Plus, Search, Pencil, Trash2, Package, Image as ImageIcon,
-  Save, Loader2, AlertTriangle, Star, DollarSign, Tag, X, Link2
+  Save, Loader2, AlertTriangle, Star, DollarSign, X, Link2, Upload, CheckCircle
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { Product, Category } from '../../types';
+import { uploadImage, isValidImage } from '../../utils/imageUpload';
 
 interface ProductsPanelProps {
   products: Product[];
@@ -50,7 +51,10 @@ export default function ProductsPanel({
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [newFeature, setNewFeature] = useState('');
-  const [newImageUrl, setNewImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const mainImageRef = useRef<HTMLInputElement>(null);
+  const galleryImageRef = useRef<HTMLInputElement>(null);
 
   const categoryNames = ['All', ...categories.map(c => c.name)];
   const currencySymbol = currency === 'BDT' ? '৳' : '$';
@@ -64,7 +68,7 @@ export default function ProductsPanel({
 
   const openAddModal = () => {
     setEditingProduct(null);
-    setFormData(defaultProduct);
+    setFormData({ ...defaultProduct, category: categories[0]?.name || 'Courses' });
     setIsModalOpen(true);
   };
 
@@ -93,7 +97,7 @@ export default function ProductsPanel({
     if (!formData.name || !formData.price || !formData.image) return;
     
     setSaving(true);
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 300));
 
     if (editingProduct) {
       onUpdateProduct(editingProduct.id, formData);
@@ -116,6 +120,54 @@ export default function ProductsPanel({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Main image upload
+  const handleMainImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!isValidImage(file)) {
+      alert('Please select a valid image file (JPG, PNG, GIF, WebP) under 32MB');
+      return;
+    }
+
+    setUploading(true);
+    const result = await uploadImage(file);
+    setUploading(false);
+
+    if (result.success && result.url) {
+      updateField('image', result.url);
+    } else {
+      alert('Upload failed: ' + (result.error || 'Unknown error'));
+    }
+
+    // Reset input
+    if (mainImageRef.current) mainImageRef.current.value = '';
+  };
+
+  // Gallery image upload
+  const handleGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!isValidImage(file)) {
+      alert('Please select a valid image file (JPG, PNG, GIF, WebP) under 32MB');
+      return;
+    }
+
+    setUploadingGallery(true);
+    const result = await uploadImage(file);
+    setUploadingGallery(false);
+
+    if (result.success && result.url) {
+      updateField('images', [...(formData.images || []), result.url]);
+    } else {
+      alert('Upload failed: ' + (result.error || 'Unknown error'));
+    }
+
+    // Reset input
+    if (galleryImageRef.current) galleryImageRef.current.value = '';
+  };
+
   const addFeature = () => {
     if (newFeature.trim()) {
       updateField('features', [...(formData.features || []), newFeature.trim()]);
@@ -125,13 +177,6 @@ export default function ProductsPanel({
 
   const removeFeature = (index: number) => {
     updateField('features', (formData.features || []).filter((_, i) => i !== index));
-  };
-
-  const addImage = () => {
-    if (newImageUrl.trim()) {
-      updateField('images', [...(formData.images || []), newImageUrl.trim()]);
-      setNewImageUrl('');
-    }
   };
 
   const removeImage = (index: number) => {
@@ -148,16 +193,16 @@ export default function ProductsPanel({
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl font-semibold text-text-primary">Products</h2>
-          <p className="text-sm text-text-secondary mt-1">Manage your digital product catalog</p>
+          <h2 className="font-display text-2xl font-semibold text-gray-900">Products</h2>
+          <p className="text-sm text-gray-500 mt-1">Manage your digital product catalog</p>
         </div>
         <button
           onClick={openAddModal}
-          className="flex items-center gap-2 px-6 py-3 rounded-full bg-forest-green hover:bg-forest-green-dark text-natural-white text-sm font-medium uppercase tracking-elegant transition-all"
+          className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#4A5D4E] hover:bg-[#3d4e41] text-white text-sm font-medium transition-all"
         >
           <Plus className="w-4 h-4" />
           Add Product
@@ -167,19 +212,19 @@ export default function ProductsPanel({
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search products..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-natural-white"
+            className="w-full pl-11 pr-4 py-3 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E] bg-white"
           />
         </div>
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
-          className="px-5 py-3 rounded-full border border-warm-gray text-sm font-medium text-text-primary focus:outline-none focus:border-forest-green bg-natural-white"
+          className="px-5 py-3 rounded-full border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#4A5D4E] bg-white"
         >
           {categoryNames.map(cat => (
             <option key={cat} value={cat}>{cat}</option>
@@ -192,9 +237,9 @@ export default function ProductsPanel({
         {filtered.map(product => (
           <div
             key={product.id}
-            className="bg-natural-white rounded-2xl border border-soft-neutral overflow-hidden hover:border-forest-green/30 transition-colors"
+            className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow"
           >
-            <div className="relative aspect-video bg-soft-neutral">
+            <div className="relative aspect-video bg-gray-100">
               <img
                 src={product.image}
                 alt={product.name}
@@ -204,43 +249,42 @@ export default function ProductsPanel({
                 }}
               />
               {product.badge && (
-                <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-forest-green text-natural-white text-xs font-medium">
+                <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-[#4A5D4E] text-white text-xs font-medium">
                   {product.badge}
                 </span>
               )}
               {product.featured && (
-                <span className="absolute top-3 right-3 px-3 py-1 rounded-full bg-warning text-text-primary text-xs font-medium">
+                <span className="absolute top-3 right-3 px-3 py-1 rounded-full bg-amber-500 text-white text-xs font-medium">
                   Featured
                 </span>
               )}
             </div>
             <div className="p-5">
-              <p className="text-xs font-medium text-forest-green uppercase tracking-elegant mb-2">
+              <p className="text-xs font-medium text-[#4A5D4E] uppercase tracking-wider mb-2">
                 {product.category}
               </p>
-              <h3 className="font-display text-lg font-semibold text-text-primary truncate mb-1">{product.name}</h3>
-              <p className="text-xs text-text-secondary line-clamp-2 mb-3">{product.description}</p>
+              <h3 className="font-semibold text-gray-900 truncate mb-1">{product.name}</h3>
+              <p className="text-xs text-gray-500 line-clamp-2 mb-3">{product.description}</p>
               
-              {/* Related products count */}
               {product.relatedProducts && product.relatedProducts.length > 0 && (
-                <p className="text-xs text-forest-green mb-3">
-                  <Link2 className="w-3 h-3 inline mr-1" />
-                  {product.relatedProducts.length} related product{product.relatedProducts.length > 1 ? 's' : ''}
+                <p className="text-xs text-[#4A5D4E] mb-3 flex items-center gap-1">
+                  <Link2 className="w-3 h-3" />
+                  {product.relatedProducts.length} related
                 </p>
               )}
               
               <div className="flex items-center justify-between">
-                <span className="font-display text-xl font-semibold text-text-primary">{currencySymbol}{product.price.toLocaleString()}</span>
+                <span className="text-xl font-bold text-gray-900">{currencySymbol}{product.price.toLocaleString()}</span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => openEditModal(product)}
-                    className="p-2 rounded-full hover:bg-soft-neutral text-text-muted hover:text-forest-green transition-colors"
+                    className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[#4A5D4E] transition-colors"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setDeleteConfirm(product.id)}
-                    className="p-2 rounded-full hover:bg-soft-neutral text-text-muted hover:text-danger transition-colors"
+                    className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -253,8 +297,8 @@ export default function ProductsPanel({
 
       {filtered.length === 0 && (
         <div className="text-center py-16">
-          <Package className="w-12 h-12 text-warm-gray mx-auto mb-3" />
-          <p className="text-sm text-text-muted">No products found</p>
+          <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-400">No products found</p>
         </div>
       )}
 
@@ -265,31 +309,57 @@ export default function ProductsPanel({
         title={editingProduct ? 'Edit Product' : 'Add New Product'}
         maxWidth="max-w-3xl"
       >
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+        <div className="space-y-6">
           {/* Basic Info Section */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-text-primary uppercase tracking-elegant border-b border-soft-neutral pb-2">
+            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-2">
               Basic Information
             </h4>
             
-            {/* Image Preview */}
+            {/* Main Image Upload */}
             <div>
-              <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Main Image</label>
-              <div className="flex gap-4">
-                <div className="w-28 h-20 rounded-2xl bg-soft-neutral border border-warm-gray flex items-center justify-center overflow-hidden">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Main Image *</label>
+              <div className="flex gap-4 items-start">
+                <div className="w-32 h-24 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
                   {formData.image ? (
                     <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <ImageIcon className="w-8 h-8 text-text-muted" />
+                    <ImageIcon className="w-8 h-8 text-gray-400" />
                   )}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 space-y-2">
+                  <input
+                    type="file"
+                    ref={mainImageRef}
+                    accept="image/*"
+                    onChange={handleMainImageUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => mainImageRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Upload Image
+                      </>
+                    )}
+                  </button>
+                  <p className="text-xs text-gray-400">Or paste URL below</p>
                   <input
                     type="url"
                     placeholder="https://example.com/image.jpg"
                     value={formData.image}
                     onChange={e => updateField('image', e.target.value)}
-                    className="w-full px-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"
                   />
                 </div>
               </div>
@@ -297,46 +367,46 @@ export default function ProductsPanel({
 
             {/* Name */}
             <div>
-              <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Product Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
               <input
                 type="text"
                 placeholder="e.g., Complete Python Course"
                 value={formData.name}
                 onChange={e => updateField('name', e.target.value)}
-                className="w-full px-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"
               />
             </div>
 
             {/* Short Description */}
             <div>
-              <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Short Description *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Short Description *</label>
               <textarea
                 placeholder="Brief description for product cards..."
                 value={formData.description}
                 onChange={e => updateField('description', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 rounded-2xl border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E] resize-none"
               />
             </div>
 
             {/* Full Description */}
             <div>
-              <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Full Description (Product Page)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Full Description (Product Page)</label>
               <textarea
                 placeholder="Detailed description shown on the product page..."
                 value={formData.fullDescription}
                 onChange={e => updateField('fullDescription', e.target.value)}
                 rows={4}
-                className="w-full px-4 py-3 rounded-2xl border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E] resize-none"
               />
             </div>
 
             {/* Price & Category */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Price ({currency}) *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Price ({currency}) *</label>
                 <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="number"
                     step="0.01"
@@ -344,16 +414,16 @@ export default function ProductsPanel({
                     placeholder="999"
                     value={formData.price || ''}
                     onChange={e => updateField('price', parseFloat(e.target.value) || 0)}
-                    className="w-full pl-11 pr-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Category *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
                 <select
                   value={formData.category}
                   onChange={e => updateField('category', e.target.value)}
-                  className="w-full px-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"
                 >
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.name}>{cat.name}</option>
@@ -365,11 +435,11 @@ export default function ProductsPanel({
             {/* Badge & Rating */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Badge</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Badge</label>
                 <select
                   value={formData.badge}
                   onChange={e => updateField('badge', e.target.value)}
-                  className="w-full px-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"
                 >
                   {badgeOptions.map(badge => (
                     <option key={badge} value={badge}>{badge || 'No Badge'}</option>
@@ -377,9 +447,9 @@ export default function ProductsPanel({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Rating</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Rating (0-5)</label>
                 <div className="relative">
-                  <Star className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                  <Star className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="number"
                     step="0.1"
@@ -387,7 +457,7 @@ export default function ProductsPanel({
                     max="5"
                     value={formData.rating}
                     onChange={e => updateField('rating', Math.min(5, Math.max(0, parseFloat(e.target.value) || 0)))}
-                    className="w-full pl-11 pr-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"
                   />
                 </div>
               </div>
@@ -400,39 +470,41 @@ export default function ProductsPanel({
                   type="checkbox"
                   checked={formData.inStock}
                   onChange={e => updateField('inStock', e.target.checked)}
-                  className="w-5 h-5 rounded border-warm-gray text-forest-green focus:ring-forest-green"
+                  className="w-5 h-5 rounded border-gray-300 text-[#4A5D4E] focus:ring-[#4A5D4E]"
                 />
-                <span className="text-sm text-text-primary">Available</span>
+                <span className="text-sm text-gray-700">Available for purchase</span>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.featured}
                   onChange={e => updateField('featured', e.target.checked)}
-                  className="w-5 h-5 rounded border-warm-gray text-forest-green focus:ring-forest-green"
+                  className="w-5 h-5 rounded border-gray-300 text-[#4A5D4E] focus:ring-[#4A5D4E]"
                 />
-                <span className="text-sm text-text-primary">Featured</span>
+                <span className="text-sm text-gray-700">Featured on homepage</span>
               </label>
             </div>
           </div>
 
           {/* Features Section */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-text-primary uppercase tracking-elegant border-b border-soft-neutral pb-2">
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-2">
               Features / What's Included
             </h4>
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Add a feature..."
+                placeholder="Add a feature (e.g., '60+ hours of video')..."
                 value={newFeature}
                 onChange={e => setNewFeature(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addFeature())}
-                className="flex-1 px-4 py-2.5 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"
               />
               <button
+                type="button"
                 onClick={addFeature}
-                className="px-4 py-2.5 rounded-full bg-forest-green text-natural-white text-sm font-medium hover:bg-forest-green-dark transition-colors"
+                disabled={!newFeature.trim()}
+                className="px-4 py-2.5 rounded-xl bg-[#4A5D4E] text-white text-sm font-medium hover:bg-[#3d4e41] disabled:opacity-50 transition-colors"
               >
                 Add
               </button>
@@ -440,9 +512,10 @@ export default function ProductsPanel({
             {formData.features && formData.features.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {formData.features.map((feature, idx) => (
-                  <span key={idx} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-soft-neutral text-sm text-text-primary">
+                  <span key={idx} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-sm text-gray-700">
+                    <CheckCircle className="w-3 h-3 text-[#4A5D4E]" />
                     {feature}
-                    <button onClick={() => removeFeature(idx)} className="text-text-muted hover:text-danger">
+                    <button onClick={() => removeFeature(idx)} className="text-gray-400 hover:text-red-500">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
@@ -452,36 +525,45 @@ export default function ProductsPanel({
           </div>
 
           {/* Additional Images Section */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-text-primary uppercase tracking-elegant border-b border-soft-neutral pb-2">
-              Additional Images
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-2">
+              Additional Images (Gallery)
             </h4>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                placeholder="Add image URL..."
-                value={newImageUrl}
-                onChange={e => setNewImageUrl(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addImage())}
-                className="flex-1 px-4 py-2.5 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
-              />
-              <button
-                onClick={addImage}
-                className="px-4 py-2.5 rounded-full bg-forest-green text-natural-white text-sm font-medium hover:bg-forest-green-dark transition-colors"
-              >
-                Add
-              </button>
-            </div>
+            <input
+              type="file"
+              ref={galleryImageRef}
+              accept="image/*"
+              onChange={handleGalleryImageUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => galleryImageRef.current?.click()}
+              disabled={uploadingGallery}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              {uploadingGallery ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Upload Gallery Image
+                </>
+              )}
+            </button>
             {formData.images && formData.images.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {formData.images.map((img, idx) => (
-                  <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden bg-soft-neutral">
-                    <img src={img} alt={`Additional ${idx + 1}`} className="w-full h-full object-cover" />
+                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden bg-gray-100 group">
+                    <img src={img} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
                     <button
                       onClick={() => removeImage(idx)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-danger text-natural-white flex items-center justify-center"
+                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-5 h-5 text-white" />
                     </button>
                   </div>
                 ))}
@@ -490,54 +572,60 @@ export default function ProductsPanel({
           </div>
 
           {/* Related Products Section */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-text-primary uppercase tracking-elegant border-b border-soft-neutral pb-2">
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-2">
               Related Products (For Upselling)
             </h4>
-            <p className="text-xs text-text-muted">Select products to show in the "You May Also Like" section</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
+            <p className="text-xs text-gray-500">Select products to show in the "You May Also Like" section</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
               {products
                 .filter(p => p.id !== editingProduct?.id)
                 .map(product => {
                   const isSelected = (formData.relatedProducts || []).includes(product.id);
                   return (
                     <button
+                      type="button"
                       key={product.id}
                       onClick={() => toggleRelatedProduct(product.id)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all ${
                         isSelected
-                          ? 'border-forest-green bg-forest-green/5'
-                          : 'border-warm-gray hover:border-forest-green/50'
+                          ? 'border-[#4A5D4E] bg-[#4A5D4E]/5 ring-1 ring-[#4A5D4E]'
+                          : 'border-gray-200 hover:border-[#4A5D4E]/50'
                       }`}
                     >
-                      <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+                      <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-text-primary truncate">{product.name}</p>
-                        <p className="text-xs text-text-muted">{currencySymbol}{product.price}</p>
+                        <p className="text-xs font-medium text-gray-900 truncate">{product.name}</p>
+                        <p className="text-xs text-gray-500">{currencySymbol}{product.price}</p>
                       </div>
                       {isSelected && (
-                        <div className="w-5 h-5 rounded-full bg-forest-green flex items-center justify-center">
-                          <Tag className="w-3 h-3 text-natural-white" />
-                        </div>
+                        <CheckCircle className="w-4 h-4 text-[#4A5D4E] shrink-0" />
                       )}
                     </button>
                   );
                 })}
             </div>
+            {(formData.relatedProducts || []).length > 0 && (
+              <p className="text-xs text-[#4A5D4E] font-medium">
+                {(formData.relatedProducts || []).length} product(s) selected
+              </p>
+            )}
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-soft-neutral sticky bottom-0 bg-natural-white">
+          <div className="flex gap-3 pt-4 border-t border-gray-100">
             <button
+              type="button"
               onClick={() => setIsModalOpen(false)}
-              className="flex-1 px-4 py-3 rounded-full border border-warm-gray text-sm font-medium text-text-primary hover:bg-soft-neutral transition-colors"
+              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSave}
               disabled={saving || !formData.name || !formData.price || !formData.image}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-forest-green hover:bg-forest-green-dark disabled:bg-warm-gray text-natural-white text-sm font-medium transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#4A5D4E] hover:bg-[#3d4e41] disabled:bg-gray-300 text-white text-sm font-medium transition-colors"
             >
               {saving ? (
                 <>
@@ -547,7 +635,7 @@ export default function ProductsPanel({
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  {editingProduct ? 'Update' : 'Add Product'}
+                  {editingProduct ? 'Update Product' : 'Add Product'}
                 </>
               )}
             </button>
@@ -558,14 +646,26 @@ export default function ProductsPanel({
       {/* Delete Modal */}
       <Modal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} maxWidth="max-w-sm">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-5">
-            <AlertTriangle className="w-8 h-8 text-danger" />
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-5">
+            <AlertTriangle className="w-8 h-8 text-red-600" />
           </div>
-          <h3 className="font-display text-xl font-semibold text-text-primary mb-2">Delete Product?</h3>
-          <p className="text-sm text-text-secondary mb-6">This action cannot be undone.</p>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Delete Product?</h3>
+          <p className="text-sm text-gray-500 mb-6">This action cannot be undone.</p>
           <div className="flex gap-3">
-            <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-3 rounded-full border border-warm-gray text-sm font-medium text-text-primary hover:bg-soft-neutral">Cancel</button>
-            <button onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="flex-1 px-4 py-3 rounded-full bg-danger text-natural-white text-sm font-medium">Delete</button>
+            <button 
+              type="button"
+              onClick={() => setDeleteConfirm(null)} 
+              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button"
+              onClick={() => deleteConfirm && handleDelete(deleteConfirm)} 
+              className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700"
+            >
+              Delete
+            </button>
           </div>
         </div>
       </Modal>
