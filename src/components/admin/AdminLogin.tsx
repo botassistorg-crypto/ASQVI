@@ -75,16 +75,16 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
               <>
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
                 <div>
-                  <p className="font-medium">Connected to Google Sheet</p>
-                  <p className="text-xs opacity-70 mt-0.5">Passcode verified from cell G2</p>
+                  <p className="font-medium">Only for Admin </p>
+                  <p className="text-xs opacity-70 mt-0.5"></p>
                 </div>
               </>
             ) : (
               <>
                 <WifiOff className="w-5 h-5 shrink-0" />
                 <div>
-                  <p className="font-medium">Offline Mode</p>
-                  <p className="text-xs opacity-70 mt-0.5">Use passcode: 123456</p>
+                  <p className="font-medium"></p>
+                  <p className="text-xs opacity-70 mt-0.5"></p>
                 </div>
               </>
             )}
@@ -134,8 +134,7 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
 
           <div className="mt-8 p-4 rounded-2xl bg-natural-white border border-warm-gray">
             <p className="text-xs text-text-muted text-center leading-relaxed">
-              🔐 Your passcode is stored in cell <strong>G2</strong> of your "Orders Details" Google Sheet. 
-              To change it, simply edit that cell — no code changes needed.
+              🔐 Locked
             </p>
           </div>
         </div>
