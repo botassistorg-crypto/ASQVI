@@ -4,11 +4,13 @@ import { Product } from '../../types';
 interface FeaturedProductsProps {
   products: Product[];
   onBuy: (product: Product) => void;
+  onViewProduct: (productId: string) => void;
   currency: string;
 }
 
-export default function FeaturedProducts({ products, onBuy, currency }: FeaturedProductsProps) {
+export default function FeaturedProducts({ products, onBuy, onViewProduct, currency }: FeaturedProductsProps) {
   const featured = products.filter(p => p.featured).slice(0, 4);
+  const currencySymbol = currency === 'BDT' ? '৳' : '$';
 
   if (featured.length === 0) return null;
 
@@ -30,7 +32,8 @@ export default function FeaturedProducts({ products, onBuy, currency }: Featured
           {featured.map((product, index) => (
             <div
               key={product.id}
-              className={`group relative bg-soft-neutral rounded-3xl overflow-hidden animate-fade-in opacity-0 stagger-${index + 2}`}
+              onClick={() => onViewProduct(product.id)}
+              className={`group relative bg-soft-neutral rounded-3xl overflow-hidden animate-fade-in opacity-0 stagger-${index + 2} cursor-pointer hover:shadow-xl transition-shadow duration-300`}
             >
               <div className="flex flex-col lg:flex-row">
                 {/* Image */}
@@ -47,7 +50,7 @@ export default function FeaturedProducts({ products, onBuy, currency }: Featured
                   <p className="text-xs font-medium text-forest-green uppercase tracking-elegant mb-3">
                     {product.category}
                   </p>
-                  <h3 className="font-display text-2xl font-semibold text-text-primary mb-3">
+                  <h3 className="font-display text-2xl font-semibold text-text-primary mb-3 group-hover:text-forest-green transition-colors">
                     {product.name}
                   </h3>
                   <p className="text-sm text-text-secondary leading-relaxed mb-6 line-clamp-3">
@@ -55,10 +58,13 @@ export default function FeaturedProducts({ products, onBuy, currency }: Featured
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="font-display text-2xl font-semibold text-text-primary">
-                      {currency === 'BDT' ? '৳' : '$'}{product.price.toLocaleString()}
+                      {currencySymbol}{product.price.toLocaleString()}
                     </span>
                     <button
-                      onClick={() => onBuy(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBuy(product);
+                      }}
                       className="flex items-center gap-2 px-6 py-3 rounded-full bg-forest-green text-natural-white text-xs font-medium uppercase tracking-elegant hover:bg-forest-green-dark transition-all group/btn"
                     >
                       Acquire Now
