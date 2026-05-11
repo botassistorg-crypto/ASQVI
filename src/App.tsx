@@ -5,6 +5,7 @@ import Hero from './components/store/Hero';
 import AboutSection from './components/store/AboutSection';
 import FeaturedProducts from './components/store/FeaturedProducts';
 import ProductCard from './components/store/ProductCard';
+import ProductPage from './components/store/ProductPage';
 import CheckoutModal from './components/store/CheckoutModal';
 import Footer from './components/store/Footer';
 import AdminLogin from './components/admin/AdminLogin';
@@ -19,10 +20,13 @@ import {
 } from './data/store';
 import { Product, Order, SiteSettings, Category } from './types';
 import { Package } from 'lucide-react';
-type View = 'store' | 'admin-login' | 'admin-panel';
+
+type View = 'store' | 'product' | 'admin-login' | 'admin-panel';
+
 export default function App() {
   const [view, setView] = useState<View>('store');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>(getOrders());
@@ -30,16 +34,39 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>(getCategories());
   const [productCategories, setProductCategories] = useState<string[]>(getProductCategories());
   const [settings, setSettings] = useState<SiteSettings>(getSettings());
+
   useEffect(() => {
     setProductCategories(getProductCategories());
   }, [products]);
+
   const filteredProducts = selectedCategory === 'All'
     ? products
     : products.filter(p => p.category === selectedCategory);
+
+  const selectedProduct = selectedProductId 
+    ? products.find(p => p.id === selectedProductId) 
+    : null;
+
+  const relatedProducts = selectedProduct?.relatedProducts
+    ? products.filter(p => selectedProduct.relatedProducts?.includes(p.id))
+    : [];
+
   const handleBuy = (product: Product) => {
     setCheckoutProduct(product);
     setCheckoutOpen(true);
   };
+
+  const handleViewProduct = (productId: string) => {
+    setSelectedProductId(productId);
+    setView('product');
+    window.scrollTo(0, 0);
+  };
+
+  const handleBackToStore = () => {
+    setSelectedProductId(null);
+    setView('store');
+  };
+
   const handleCheckoutSubmit = async (data: { name: string; whatsapp: string; email: string; senderBkash: string }) => {
     if (!checkoutProduct) return;
     try {
@@ -58,6 +85,7 @@ export default function App() {
       toast.error('Failed to place order. Please try again.');
     }
   };
+
   const handleAdminLogin = useCallback(async (code: string): Promise<boolean> => {
     try {
       const valid = await verifyPasscode(code);
@@ -73,6 +101,7 @@ export default function App() {
       return false;
     }
   }, []);
+
   const handleUpdateStatus = useCallback((orderId: string, status: Order['status']): boolean => {
     const success = updateOrderStatus(orderId, status);
     if (success) {
@@ -88,6 +117,7 @@ export default function App() {
     }
     return success;
   }, []);
+
   const handleDeleteOrder = useCallback((orderId: string): boolean => {
     const success = deleteOrder(orderId);
     if (success) {
@@ -96,6 +126,7 @@ export default function App() {
     }
     return success;
   }, []);
+
   const handleAddProduct = useCallback((productData: Omit<Product, 'id'>): Product | null => {
     const newProduct = addProduct(productData);
     if (newProduct) {
@@ -104,6 +135,7 @@ export default function App() {
     }
     return newProduct;
   }, []);
+
   const handleUpdateProduct = useCallback((productId: string, updates: Partial<Product>): boolean => {
     const success = updateProduct(productId, updates);
     if (success) {
@@ -112,6 +144,7 @@ export default function App() {
     }
     return success;
   }, []);
+
   const handleDeleteProduct = useCallback((productId: string): boolean => {
     const success = deleteProduct(productId);
     if (success) {
@@ -120,6 +153,7 @@ export default function App() {
     }
     return success;
   }, []);
+
   const handleAddCategory = useCallback((categoryData: Omit<Category, 'id'>): Category | null => {
     const newCategory = addCategory(categoryData);
     if (newCategory) {
@@ -128,6 +162,7 @@ export default function App() {
     }
     return newCategory;
   }, []);
+
   const handleUpdateCategory = useCallback((categoryId: string, updates: Partial<Category>): boolean => {
     const success = updateCategory(categoryId, updates);
     if (success) {
@@ -136,6 +171,7 @@ export default function App() {
     }
     return success;
   }, []);
+
   const handleDeleteCategory = useCallback((categoryId: string): boolean => {
     const success = deleteCategory(categoryId);
     if (success) {
@@ -144,6 +180,7 @@ export default function App() {
     }
     return success;
   }, []);
+
   const handleSaveSettings = useCallback((newSettings: SiteSettings): boolean => {
     const success = saveSettings(newSettings);
     if (success) {
@@ -152,16 +189,19 @@ export default function App() {
     }
     return success;
   }, []);
+
   const handleLogout = () => {
     setAuthenticated(false);
     setStoredPasscode('');
     setView('store');
     toast('Logged out', { icon: '👋' });
   };
+
   const toastOptions = {
     className: '!rounded-2xl !shadow-xl !border !border-soft-neutral !text-sm !font-medium !bg-natural-white',
     style: { fontFamily: 'Inter, sans-serif' },
   };
+
   // Admin Login View
   if (view === 'admin-login') {
     return (
@@ -171,6 +211,7 @@ export default function App() {
       </>
     );
   }
+
   // Admin Panel View
   if (view === 'admin-panel') {
     return (
@@ -195,10 +236,48 @@ export default function App() {
       </>
     );
   }
+
+  // Product Page View
+  if (view === 'product' && selectedProduct) {
+    return (
+      <>
+        <Toaster position="top-right" toastOptions={toastOptions} />
+        <Navbar
+          onAdminClick={() => {
+            if (isAuthenticated() && getStoredPasscode()) {
+              setView('admin-panel');
+            } else {
+              setView('admin-login');
+            }
+          }}
+          storeName={settings.storeName}
+        />
+        <ProductPage
+          product={selectedProduct}
+          relatedProducts={relatedProducts}
+          currency={settings.currency}
+          onBuy={handleBuy}
+          onBack={handleBackToStore}
+          onViewProduct={handleViewProduct}
+        />
+        <CheckoutModal
+          isOpen={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          product={checkoutProduct}
+          bkashNumber={settings.bkashNumber}
+          currency={settings.currency}
+          onSubmit={handleCheckoutSubmit}
+        />
+        <Footer storeName={settings.storeName} bkashNumber={settings.bkashNumber} />
+      </>
+    );
+  }
+
   // Storefront View
   return (
     <div className="min-h-screen bg-natural-white">
       <Toaster position="top-right" toastOptions={toastOptions} />
+
       <Navbar
         onAdminClick={() => {
           if (isAuthenticated() && getStoredPasscode()) {
@@ -209,9 +288,16 @@ export default function App() {
         }}
         storeName={settings.storeName}
       />
+
       <Hero settings={settings} />
       <AboutSection settings={settings} />
-      <FeaturedProducts products={products} onBuy={handleBuy} currency={settings.currency} />
+      <FeaturedProducts 
+        products={products} 
+        onBuy={handleBuy} 
+        onViewProduct={handleViewProduct}
+        currency={settings.currency} 
+      />
+
       {/* Shop Section */}
       <section id="shop" className="py-24 sm:py-32 bg-soft-neutral">
         <div className="max-w-6xl mx-auto px-6">
@@ -221,6 +307,7 @@ export default function App() {
               Shop All Products
             </h2>
           </div>
+
           <div className="flex flex-wrap justify-center gap-3 mb-12 animate-fade-in stagger-2">
             {productCategories.map(cat => (
               <button
@@ -236,10 +323,18 @@ export default function App() {
               </button>
             ))}
           </div>
+
           {filteredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product, index) => (
-                <ProductCard key={product.id} product={product} index={index} onBuy={handleBuy} currency={settings.currency} />
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  index={index} 
+                  onBuy={handleBuy} 
+                  onViewProduct={handleViewProduct}
+                  currency={settings.currency} 
+                />
               ))}
             </div>
           ) : (
@@ -250,6 +345,7 @@ export default function App() {
           )}
         </div>
       </section>
+
       <CheckoutModal
         isOpen={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
@@ -258,6 +354,7 @@ export default function App() {
         currency={settings.currency}
         onSubmit={handleCheckoutSubmit}
       />
+
       <Footer storeName={settings.storeName} bkashNumber={settings.bkashNumber} />
     </div>
   );
