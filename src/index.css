@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Playfair Display', serif;
+  
+  /* Organic Modern Theme */
+  --color-natural-white: #FAF9F6;
+  --color-forest-green: #4A5D4E;
+  --color-forest-green-dark: #3d4e41;
+  --color-forest-green-light: #5a6d5e;
+  --color-soft-neutral: #F0EDE4;
+  --color-warm-gray: #E8E4DB;
+  --color-text-primary: #2C2C2C;
+  --color-text-secondary: #6B6B6B;
+  --color-text-muted: #9A9A9A;
+  
+  --color-success: #4A5D4E;
+  --color-warning: #C9A962;
+  --color-danger: #B85C5C;
+  --color-info: #5C7B8A;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1cdc4 transparent;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #FAF9F6;
+  color: #2C2C2C;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Playfair Display for headings */
+h1, h2, h3, .font-display {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Elegant Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.5s ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.5s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Staggered animations */
+.stagger-1 { animation-delay: 0.1s; opacity: 0; }
+.stagger-2 { animation-delay: 0.2s; opacity: 0; }
+.stagger-3 { animation-delay: 0.3s; opacity: 0; }
+.stagger-4 { animation-delay: 0.4s; opacity: 0; }
+.stagger-5 { animation-delay: 0.5s; opacity: 0; }
+.stagger-6 { animation-delay: 0.6s; opacity: 0; }
+.stagger-7 { animation-delay: 0.7s; opacity: 0; }
+.stagger-8 { animation-delay: 0.8s; opacity: 0; }
+
+/* Elegant letter spacing for uppercase */
+.tracking-elegant {
+  letter-spacing: 0.2em;
+}
+
+/* Custom selection color */
+::selection {
+  background: #4A5D4E;
+  color: white;
+}
