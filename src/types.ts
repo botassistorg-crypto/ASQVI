@@ -2,14 +2,18 @@ export interface Product {
   id: string;
   name: string;
   description: string;
+  fullDescription?: string;  // Detailed description for product page
   price: number;
   category: string;
   image: string;
+  images?: string[];         // Additional images for product page
   badge?: string;
   rating: number;
   reviews: number;
   inStock: boolean;
   featured?: boolean;
+  relatedProducts?: string[]; // Array of product IDs for upselling
+  features?: string[];        // Product features/highlights
 }
 
 export interface Order {
