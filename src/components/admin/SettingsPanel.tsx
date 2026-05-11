@@ -204,7 +204,7 @@ export default function SettingsPanel({ settings, onSave }: SettingsPanelProps) 
                 className="w-full pl-11 pr-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
               />
             </div>
-            <p className="text-xs text-text-muted mt-2 pl-4">Your deployed Apps Script WebApp URL for Google Sheets sync</p>
+            <p className="text-xs text-text-muted mt-2 pl-4">https://script.google.com/macros/s/AKfycbxXoOHSW8qlpdxZnWqidDrYnH_KdSs4qh_DHU8TGw7R652XJ8PfI8Tap0qXd0QSb0hk/exec</p>
           </div>
         </div>
 
