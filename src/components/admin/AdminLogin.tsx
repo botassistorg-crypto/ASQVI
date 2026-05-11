@@ -1,21 +1,17 @@
 import { useState } from 'react';
 import { Leaf, Lock, Loader2, ArrowLeft } from 'lucide-react';
-
 interface AdminLoginProps {
   onLogin: (passcode: string) => Promise<boolean>;
   onBack: () => void;
 }
-
 export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
   const [passcode, setPasscode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     try {
       const success = await onLogin(passcode);
       if (!success) {
@@ -25,10 +21,8 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
       console.error('Login error:', err);
       setError('Connection error. Check your Apps Script URL in Settings.');
     }
-
     setLoading(false);
   };
-
   return (
     <div className="min-h-screen bg-natural-white flex items-center justify-center p-6">
       {/* Background Pattern */}
@@ -38,7 +32,6 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
           backgroundSize: '40px 40px',
         }} />
       </div>
-
       <div className="relative w-full max-w-md">
         <button
           onClick={onBack}
@@ -47,7 +40,6 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
           <ArrowLeft className="w-4 h-4" />
           Back to Store
         </button>
-
         <div className="bg-soft-neutral rounded-3xl p-8 sm:p-10">
           {/* Header */}
           <div className="text-center mb-10">
@@ -57,7 +49,6 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
             <h2 className="font-display text-2xl font-semibold text-text-primary mb-2">Site Engine</h2>
             <p className="text-sm text-text-secondary">Enter your dynamic OTP to access</p>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">
@@ -82,7 +73,6 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
                 </p>
               )}
             </div>
-
             <button
               type="submit"
               disabled={loading || !passcode}
@@ -98,7 +88,6 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
               )}
             </button>
           </form>
-
           <div className="mt-8 p-4 rounded-2xl bg-natural-white border border-warm-gray">
             <p className="text-xs text-text-muted text-center leading-relaxed">
               🔐 Your passcode is read live from cell <strong>G2</strong> of your "Orders Details" Google Sheet.
