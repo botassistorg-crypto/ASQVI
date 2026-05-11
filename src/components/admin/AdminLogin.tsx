@@ -95,9 +95,9 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
 
           <div className="mt-8 p-4 rounded-2xl bg-natural-white border border-warm-gray">
             <p className="text-xs text-text-muted text-center leading-relaxed">
-              🔐 This system uses Dynamic OTP verification. The passcode is stored in cell G2 of your "Orders Details" Google Sheet.
+              🔐 This system uses Dynamic OTP verification. 
               <br /><br />
-              <span className="text-forest-green font-medium">Demo passcode: 123456</span>
+              <span className="text-forest-green font-medium"></span>
             </p>
           </div>
         </div>
