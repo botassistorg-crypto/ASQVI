@@ -18,7 +18,7 @@
  */
 
 // 👇 PASTE YOUR APPS SCRIPT WEB APP URL HERE 👇
-export const APPS_SCRIPT_URL = '';
+export const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRAD1GHA7s7U14Ap0gg4qKK3hPrVYQTeT42OIdAYgQJ0NPRO-3FUnoWK4LUYkvYtTybg/exec';
 // Example: export const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx.../exec';
 
 /**
