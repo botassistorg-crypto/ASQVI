@@ -19,9 +19,7 @@ import {
 } from './data/store';
 import { Product, Order, SiteSettings, Category } from './types';
 import { Package } from 'lucide-react';
-
 type View = 'store' | 'admin-login' | 'admin-panel';
-
 export default function App() {
   const [view, setView] = useState<View>('store');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -32,25 +30,18 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>(getCategories());
   const [productCategories, setProductCategories] = useState<string[]>(getProductCategories());
   const [settings, setSettings] = useState<SiteSettings>(getSettings());
-  const [passcode, setPasscode] = useState(getStoredPasscode());
-
-  // Refresh product categories when products change
   useEffect(() => {
     setProductCategories(getProductCategories());
   }, [products]);
-
   const filteredProducts = selectedCategory === 'All'
     ? products
     : products.filter(p => p.category === selectedCategory);
-
   const handleBuy = (product: Product) => {
     setCheckoutProduct(product);
     setCheckoutOpen(true);
   };
-
   const handleCheckoutSubmit = async (data: { name: string; whatsapp: string; email: string; senderBkash: string }) => {
     if (!checkoutProduct) return;
-    
     try {
       const order = await addOrder({
         name: data.name,
@@ -61,23 +52,18 @@ export default function App() {
         price: checkoutProduct.price,
       });
       setOrders(getOrders());
-      toast.success(`Order placed! ID: ${order.id}`, {
-        icon: '✨',
-        duration: 4000,
-      });
+      toast.success(`Order placed! ID: ${order.id}`, { icon: '✨', duration: 4000 });
     } catch (err) {
       console.error('Order error:', err);
       toast.error('Failed to place order. Please try again.');
     }
   };
-
   const handleAdminLogin = useCallback(async (code: string): Promise<boolean> => {
     try {
       const valid = await verifyPasscode(code);
       if (valid) {
         setAuthenticated(true);
         setStoredPasscode(code);
-        setPasscode(code);
         setView('admin-panel');
         toast.success('Welcome to Site Engine', { icon: '🔐' });
       }
@@ -87,9 +73,8 @@ export default function App() {
       return false;
     }
   }, []);
-
   const handleUpdateStatus = useCallback((orderId: string, status: Order['status']): boolean => {
-    const success = updateOrderStatus(orderId, status, passcode);
+    const success = updateOrderStatus(orderId, status);
     if (success) {
       setOrders(getOrders());
       toast.success(`Order → ${status}`, {
@@ -99,99 +84,84 @@ export default function App() {
         toast('Customer notified via email', { icon: '📧', duration: 3000 });
       }
     } else {
-      toast.error('Session expired');
+      toast.error('Session expired. Please re-login.');
     }
     return success;
-  }, [passcode]);
-
+  }, []);
   const handleDeleteOrder = useCallback((orderId: string): boolean => {
-    const success = deleteOrder(orderId, passcode);
+    const success = deleteOrder(orderId);
     if (success) {
       setOrders(getOrders());
       toast.success('Order deleted');
     }
     return success;
-  }, [passcode]);
-
-  // Product management
+  }, []);
   const handleAddProduct = useCallback((productData: Omit<Product, 'id'>): Product | null => {
-    const newProduct = addProduct(productData, passcode);
+    const newProduct = addProduct(productData);
     if (newProduct) {
       setProducts(getProducts());
       toast.success('Product added', { icon: '🛍️' });
     }
     return newProduct;
-  }, [passcode]);
-
+  }, []);
   const handleUpdateProduct = useCallback((productId: string, updates: Partial<Product>): boolean => {
-    const success = updateProduct(productId, updates, passcode);
+    const success = updateProduct(productId, updates);
     if (success) {
       setProducts(getProducts());
       toast.success('Product updated');
     }
     return success;
-  }, [passcode]);
-
+  }, []);
   const handleDeleteProduct = useCallback((productId: string): boolean => {
-    const success = deleteProduct(productId, passcode);
+    const success = deleteProduct(productId);
     if (success) {
       setProducts(getProducts());
       toast.success('Product deleted');
     }
     return success;
-  }, [passcode]);
-
-  // Category management
+  }, []);
   const handleAddCategory = useCallback((categoryData: Omit<Category, 'id'>): Category | null => {
-    const newCategory = addCategory(categoryData, passcode);
+    const newCategory = addCategory(categoryData);
     if (newCategory) {
       setCategories(getCategories());
       toast.success('Category added');
     }
     return newCategory;
-  }, [passcode]);
-
+  }, []);
   const handleUpdateCategory = useCallback((categoryId: string, updates: Partial<Category>): boolean => {
-    const success = updateCategory(categoryId, updates, passcode);
+    const success = updateCategory(categoryId, updates);
     if (success) {
       setCategories(getCategories());
       toast.success('Category updated');
     }
     return success;
-  }, [passcode]);
-
+  }, []);
   const handleDeleteCategory = useCallback((categoryId: string): boolean => {
-    const success = deleteCategory(categoryId, passcode);
+    const success = deleteCategory(categoryId);
     if (success) {
       setCategories(getCategories());
       toast.success('Category deleted');
     }
     return success;
-  }, [passcode]);
-
+  }, []);
   const handleSaveSettings = useCallback((newSettings: SiteSettings): boolean => {
-    const success = saveSettings(newSettings, passcode);
+    const success = saveSettings(newSettings);
     if (success) {
       setSettings(newSettings);
       toast.success('Settings saved', { icon: '⚙️' });
     }
     return success;
-  }, [passcode]);
-
+  }, []);
   const handleLogout = () => {
     setAuthenticated(false);
     setStoredPasscode('');
-    setPasscode('');
     setView('store');
     toast('Logged out', { icon: '👋' });
   };
-
-  // Toast configuration
   const toastOptions = {
     className: '!rounded-2xl !shadow-xl !border !border-soft-neutral !text-sm !font-medium !bg-natural-white',
     style: { fontFamily: 'Inter, sans-serif' },
   };
-
   // Admin Login View
   if (view === 'admin-login') {
     return (
@@ -201,7 +171,6 @@ export default function App() {
       </>
     );
   }
-
   // Admin Panel View
   if (view === 'admin-panel') {
     return (
@@ -226,12 +195,10 @@ export default function App() {
       </>
     );
   }
-
   // Storefront View
   return (
     <div className="min-h-screen bg-natural-white">
       <Toaster position="top-right" toastOptions={toastOptions} />
-
       <Navbar
         onAdminClick={() => {
           if (isAuthenticated() && getStoredPasscode()) {
@@ -242,31 +209,18 @@ export default function App() {
         }}
         storeName={settings.storeName}
       />
-
       <Hero settings={settings} />
-
       <AboutSection settings={settings} />
-
-      <FeaturedProducts
-        products={products}
-        onBuy={handleBuy}
-        currency={settings.currency}
-      />
-
+      <FeaturedProducts products={products} onBuy={handleBuy} currency={settings.currency} />
       {/* Shop Section */}
       <section id="shop" className="py-24 sm:py-32 bg-soft-neutral">
         <div className="max-w-6xl mx-auto px-6">
-          {/* Header */}
           <div className="text-center mb-12">
-            <p className="text-xs font-medium text-forest-green uppercase tracking-elegant mb-4 animate-fade-in">
-              Full Catalog
-            </p>
+            <p className="text-xs font-medium text-forest-green uppercase tracking-elegant mb-4 animate-fade-in">Full Catalog</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-semibold text-text-primary animate-fade-in stagger-1">
               Shop All Products
             </h2>
           </div>
-
-          {/* Category Filter */}
           <div className="flex flex-wrap justify-center gap-3 mb-12 animate-fade-in stagger-2">
             {productCategories.map(cat => (
               <button
@@ -282,18 +236,10 @@ export default function App() {
               </button>
             ))}
           </div>
-
-          {/* Products Grid */}
           {filteredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product, index) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  index={index}
-                  onBuy={handleBuy}
-                  currency={settings.currency}
-                />
+                <ProductCard key={product.id} product={product} index={index} onBuy={handleBuy} currency={settings.currency} />
               ))}
             </div>
           ) : (
@@ -304,8 +250,6 @@ export default function App() {
           )}
         </div>
       </section>
-
-      {/* Checkout Modal */}
       <CheckoutModal
         isOpen={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
@@ -314,7 +258,6 @@ export default function App() {
         currency={settings.currency}
         onSubmit={handleCheckoutSubmit}
       />
-
       <Footer storeName={settings.storeName} bkashNumber={settings.bkashNumber} />
     </div>
   );
