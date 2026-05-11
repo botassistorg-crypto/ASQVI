@@ -29,44 +29,10 @@ const defaultCategories: Category[] = [
   { id: 'cat-5', name: 'Services', description: 'Professional assistance' },
 ];
 
-const defaultOrders: Order[] = [
-  {
-    id: 'ord-001',
-    name: 'Rahul Ahmed',
-    whatsapp: '+8801712345678',
-    email: 'rahul@example.com',
-    senderBkash: '01712345678',
-    product: 'Complete Web Development Course',
-    price: 2999,
-    status: 'Pending',
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: 'ord-002',
-    name: 'Fatima Khan',
-    whatsapp: '+8801812345678',
-    email: 'fatima@example.com',
-    senderBkash: '01812345678',
-    product: 'UI/UX Design Masterclass',
-    price: 1999,
-    status: 'Processed',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: 'ord-003',
-    name: 'Imran Hossain',
-    whatsapp: '+8801912345678',
-    email: 'imran@example.com',
-    senderBkash: '01912345678',
-    product: 'Premium Notion Templates',
-    price: 499,
-    status: 'Sent',
-    createdAt: new Date().toISOString(),
-  },
-];
+const defaultOrders: Order[] = [];
 
-// OTP for admin login (simulates Google Sheet cell G2)
-const ADMIN_OTP = '123456';
+// Fallback OTP for offline/demo mode
+const FALLBACK_OTP = '123456';
 
 // ============ ORDERS ============
 
@@ -81,7 +47,7 @@ export function saveOrders(orders: Order[]): void {
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 }
 
-export function addOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>): Order {
+export async function addOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>): Promise<Order> {
   const orders = getOrders();
   const newOrder: Order = {
     ...order,
@@ -91,13 +57,40 @@ export function addOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>): Ord
   };
   orders.unshift(newOrder);
   saveOrders(orders);
-  // Simulate email to admin
-  console.log(`📧 Admin notification sent to ${getSettings().adminEmail}: New order from ${order.name} for ${order.product}`);
+  
+  // Sync to Google Sheet
+  const settings = getSettings();
+  const scriptUrl = settings.scriptUrl;
+  
+  if (scriptUrl && !scriptUrl.includes('YOUR_SCRIPT_ID')) {
+    try {
+      await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        body: JSON.stringify({
+          action: 'newOrder',
+          name: order.name,
+          number: order.whatsapp,
+          email: order.email,
+          product: order.product,
+          price: order.price,
+          senderBkash: order.senderBkash,
+        }),
+      });
+      console.log('✅ Order synced to Google Sheet');
+    } catch (err) {
+      console.error('❌ Sheet sync error:', err);
+    }
+  } else {
+    console.log('📧 Admin notification: New order from', order.name, 'for', order.product);
+  }
+  
   return newOrder;
 }
 
 export function updateOrderStatus(orderId: string, status: Order['status'], passcode: string): boolean {
-  if (!verifyPasscode(passcode)) return false;
+  if (!getStoredPasscode()) return false;
   const orders = getOrders();
   const idx = orders.findIndex(o => o.id === orderId);
   if (idx === -1) return false;
@@ -110,7 +103,7 @@ export function updateOrderStatus(orderId: string, status: Order['status'], pass
 }
 
 export function deleteOrder(orderId: string, passcode: string): boolean {
-  if (!verifyPasscode(passcode)) return false;
+  if (!getStoredPasscode()) return false;
   const orders = getOrders();
   const filtered = orders.filter(o => o.id !== orderId);
   saveOrders(filtered);
@@ -131,7 +124,7 @@ export function saveProducts(products: Product[]): void {
 }
 
 export function addProduct(product: Omit<Product, 'id'>, passcode: string): Product | null {
-  if (!verifyPasscode(passcode)) return null;
+  if (!getStoredPasscode()) return null;
   const products = getProducts();
   const newProduct: Product = {
     ...product,
@@ -143,7 +136,7 @@ export function addProduct(product: Omit<Product, 'id'>, passcode: string): Prod
 }
 
 export function updateProduct(productId: string, updates: Partial<Product>, passcode: string): boolean {
-  if (!verifyPasscode(passcode)) return false;
+  if (!getStoredPasscode()) return false;
   const products = getProducts();
   const idx = products.findIndex(p => p.id === productId);
   if (idx === -1) return false;
@@ -153,7 +146,7 @@ export function updateProduct(productId: string, updates: Partial<Product>, pass
 }
 
 export function deleteProduct(productId: string, passcode: string): boolean {
-  if (!verifyPasscode(passcode)) return false;
+  if (!getStoredPasscode()) return false;
   const products = getProducts();
   const filtered = products.filter(p => p.id !== productId);
   saveProducts(filtered);
@@ -179,7 +172,7 @@ export function saveCategories(categories: Category[]): void {
 }
 
 export function addCategory(category: Omit<Category, 'id'>, passcode: string): Category | null {
-  if (!verifyPasscode(passcode)) return null;
+  if (!getStoredPasscode()) return null;
   const categories = getCategories();
   const newCategory: Category = {
     ...category,
@@ -191,7 +184,7 @@ export function addCategory(category: Omit<Category, 'id'>, passcode: string): C
 }
 
 export function updateCategory(categoryId: string, updates: Partial<Category>, passcode: string): boolean {
-  if (!verifyPasscode(passcode)) return false;
+  if (!getStoredPasscode()) return false;
   const categories = getCategories();
   const idx = categories.findIndex(c => c.id === categoryId);
   if (idx === -1) return false;
@@ -201,7 +194,7 @@ export function updateCategory(categoryId: string, updates: Partial<Category>, p
 }
 
 export function deleteCategory(categoryId: string, passcode: string): boolean {
-  if (!verifyPasscode(passcode)) return false;
+  if (!getStoredPasscode()) return false;
   const categories = getCategories();
   const filtered = categories.filter(c => c.id !== categoryId);
   saveCategories(filtered);
@@ -218,15 +211,41 @@ export function getSettings(): SiteSettings {
 }
 
 export function saveSettings(settings: SiteSettings, passcode: string): boolean {
-  if (!verifyPasscode(passcode)) return false;
+  if (!getStoredPasscode()) return false;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   return true;
 }
 
 // ============ AUTH ============
 
-export function verifyPasscode(passcode: string): boolean {
-  return passcode === ADMIN_OTP;
+export async function verifyPasscode(passcode: string): Promise<boolean> {
+  const settings = getSettings();
+  const scriptUrl = settings.scriptUrl;
+  
+  // If no script URL configured, use fallback
+  if (!scriptUrl || scriptUrl.includes('YOUR_SCRIPT_ID')) {
+    console.log('⚠️ Using fallback OTP (no Apps Script URL configured)');
+    return passcode === FALLBACK_OTP;
+  }
+  
+  try {
+    const response = await fetch(scriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'verify', 
+        passcode: passcode 
+      }),
+    });
+    
+    const result = await response.json();
+    return result.success === true;
+  } catch (error) {
+    console.error('❌ Verification error:', error);
+    // Fallback to local check on network error
+    console.log('⚠️ Network error, using fallback OTP');
+    return passcode === FALLBACK_OTP;
+  }
 }
 
 export function isAuthenticated(): boolean {
