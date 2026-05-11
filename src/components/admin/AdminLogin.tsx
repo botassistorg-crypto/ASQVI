@@ -15,17 +15,17 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       const success = await onLogin(passcode);
       if (!success) {
         setError('Invalid passcode. Check cell G2 in your Google Sheet.');
       }
     } catch (err) {
-      setError('Connection error. Please try again.');
       console.error('Login error:', err);
+      setError('Connection error. Check your Apps Script URL in Settings.');
     }
-    
+
     setLoading(false);
   };
 
@@ -91,7 +91,7 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Verifying...
+                  Verifying with Google Sheet...
                 </>
               ) : (
                 'Access Site Engine'
@@ -101,9 +101,11 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
 
           <div className="mt-8 p-4 rounded-2xl bg-natural-white border border-warm-gray">
             <p className="text-xs text-text-muted text-center leading-relaxed">
-              🔐 This system uses Dynamic OTP verification. The passcode is stored in cell G2 of your "Orders Details" Google Sheet.
+              🔐 Your passcode is read live from cell <strong>G2</strong> of your "Orders Details" Google Sheet.
               <br /><br />
-              <span className="text-forest-green font-medium">Demo passcode: 123456</span>
+              <span className="text-text-secondary">No Apps Script URL configured?</span>
+              <br />
+              <span className="text-forest-green font-medium">Offline mode passcode: 123456</span>
             </p>
           </div>
         </div>
