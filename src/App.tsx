@@ -48,33 +48,44 @@ export default function App() {
     setCheckoutOpen(true);
   };
 
-  const handleCheckoutSubmit = (data: { name: string; whatsapp: string; email: string; senderBkash: string }) => {
+  const handleCheckoutSubmit = async (data: { name: string; whatsapp: string; email: string; senderBkash: string }) => {
     if (!checkoutProduct) return;
-    const order = addOrder({
-      name: data.name,
-      whatsapp: data.whatsapp,
-      email: data.email,
-      senderBkash: data.senderBkash,
-      product: checkoutProduct.name,
-      price: checkoutProduct.price,
-    });
-    setOrders(getOrders());
-    toast.success(`Order placed! ID: ${order.id}`, {
-      icon: '✨',
-      duration: 4000,
-    });
+    
+    try {
+      const order = await addOrder({
+        name: data.name,
+        whatsapp: data.whatsapp,
+        email: data.email,
+        senderBkash: data.senderBkash,
+        product: checkoutProduct.name,
+        price: checkoutProduct.price,
+      });
+      setOrders(getOrders());
+      toast.success(`Order placed! ID: ${order.id}`, {
+        icon: '✨',
+        duration: 4000,
+      });
+    } catch (err) {
+      console.error('Order error:', err);
+      toast.error('Failed to place order. Please try again.');
+    }
   };
 
-  const handleAdminLogin = useCallback((code: string): boolean => {
-    const valid = verifyPasscode(code);
-    if (valid) {
-      setAuthenticated(true);
-      setStoredPasscode(code);
-      setPasscode(code);
-      setView('admin-panel');
-      toast.success('Welcome to Site Engine', { icon: '🔐' });
+  const handleAdminLogin = useCallback(async (code: string): Promise<boolean> => {
+    try {
+      const valid = await verifyPasscode(code);
+      if (valid) {
+        setAuthenticated(true);
+        setStoredPasscode(code);
+        setPasscode(code);
+        setView('admin-panel');
+        toast.success('Welcome to Site Engine', { icon: '🔐' });
+      }
+      return valid;
+    } catch (err) {
+      console.error('Login error:', err);
+      return false;
     }
-    return valid;
   }, []);
 
   const handleUpdateStatus = useCallback((orderId: string, status: Order['status']): boolean => {
