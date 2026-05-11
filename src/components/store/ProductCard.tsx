@@ -1,14 +1,17 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Star } from 'lucide-react';
 import { Product } from '../../types';
 
 interface ProductCardProps {
   product: Product;
   index: number;
   onBuy: (product: Product) => void;
+  onViewProduct?: (productId: string) => void;
   currency: string;
 }
 
-export default function ProductCard({ product, index, onBuy, currency }: ProductCardProps) {
+export default function ProductCard({ product, index, onBuy, onViewProduct, currency }: ProductCardProps) {
+  const currencySymbol = currency === 'BDT' ? '৳' : '$';
+
   const badgeColors: Record<string, string> = {
     'Best Seller': 'bg-forest-green text-natural-white',
     'Featured': 'bg-forest-green text-natural-white',
@@ -17,9 +20,16 @@ export default function ProductCard({ product, index, onBuy, currency }: Product
     'Premium': 'bg-text-primary text-natural-white',
   };
 
+  const handleCardClick = () => {
+    if (onViewProduct) {
+      onViewProduct(product.id);
+    }
+  };
+
   return (
     <div
-      className={`group bg-natural-white rounded-3xl overflow-hidden border border-soft-neutral hover:border-forest-green/30 transition-all duration-500 hover:shadow-xl hover:shadow-forest-green/5 animate-fade-in opacity-0 stagger-${Math.min(index + 1, 8)}`}
+      className={`group bg-natural-white rounded-3xl overflow-hidden border border-soft-neutral hover:border-forest-green/30 transition-all duration-500 hover:shadow-xl hover:shadow-forest-green/5 animate-fade-in opacity-0 stagger-${Math.min(index + 1, 8)} ${onViewProduct ? 'cursor-pointer' : ''}`}
+      onClick={handleCardClick}
     >
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-soft-neutral">
@@ -49,19 +59,41 @@ export default function ProductCard({ product, index, onBuy, currency }: Product
         </h3>
 
         {/* Description */}
-        <p className="text-sm text-text-secondary line-clamp-2 mb-5 leading-relaxed">
+        <p className="text-sm text-text-secondary line-clamp-2 mb-4 leading-relaxed">
           {product.description}
         </p>
+
+        {/* Rating */}
+        <div className="flex items-center gap-2 mb-5">
+          <div className="flex items-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                className={`w-4 h-4 ${
+                  i < Math.floor(product.rating)
+                    ? 'text-warning fill-warning'
+                    : 'text-warm-gray'
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-xs text-text-muted">
+            ({product.reviews.toLocaleString()})
+          </span>
+        </div>
 
         {/* Price & Button */}
         <div className="flex items-center justify-between">
           <div>
             <span className="font-display text-2xl font-semibold text-text-primary">
-              {currency === 'BDT' ? '৳' : '$'}{product.price.toLocaleString()}
+              {currencySymbol}{product.price.toLocaleString()}
             </span>
           </div>
           <button
-            onClick={() => onBuy(product)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBuy(product);
+            }}
             className="flex items-center gap-2 px-6 py-3 rounded-full bg-forest-green text-natural-white text-xs font-medium uppercase tracking-elegant hover:bg-forest-green-dark transition-all group/btn"
           >
             Acquire
