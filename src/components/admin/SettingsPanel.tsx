@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import {
-  Save, Globe, Mail, Phone, DollarSign,
-  Link2, Store, Loader2, Check, Type, FileText, Heading
+  Save, Mail, Phone, DollarSign,
+  Store, Loader2, Check, Type, FileText, Heading
 } from 'lucide-react';
 import { SiteSettings } from '../../types';
+import { isScriptConfigured } from '../../config';
 
 interface SettingsPanelProps {
   settings: SiteSettings;
@@ -34,7 +35,7 @@ export default function SettingsPanel({ settings, onSave }: SettingsPanelProps) 
     <div className="space-y-8 animate-fade-in">
       <div>
         <h2 className="font-display text-2xl font-semibold text-text-primary">Site Configuration</h2>
-        <p className="text-sm text-text-secondary mt-1">Manage your store settings and integrations</p>
+        <p className="text-sm text-text-secondary mt-1">Manage your store settings</p>
       </div>
 
       <div className="max-w-2xl space-y-6">
@@ -184,27 +185,26 @@ export default function SettingsPanel({ settings, onSave }: SettingsPanelProps) 
           </div>
         </div>
 
-        {/* Integration */}
+        {/* Connection Status (Read-only) */}
         <div className="bg-natural-white rounded-2xl border border-soft-neutral p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full bg-soft-neutral flex items-center justify-center">
-              <Globe className="w-5 h-5 text-forest-green" />
+          <h3 className="font-display text-lg font-semibold text-text-primary mb-4">Connection Status</h3>
+          <div className={`flex items-center gap-3 p-4 rounded-2xl ${
+            isScriptConfigured()
+              ? 'bg-forest-green/10 text-forest-green'
+              : 'bg-warning/10 text-warning'
+          }`}>
+            <div className={`w-3 h-3 rounded-full ${isScriptConfigured() ? 'bg-forest-green' : 'bg-warning'}`} />
+            <div>
+              <p className="text-sm font-medium">
+                {isScriptConfigured() ? 'Connected to Google Sheet' : 'Offline Mode'}
+              </p>
+              <p className="text-xs opacity-70 mt-0.5">
+                {isScriptConfigured()
+                  ? 'Orders sync to Sheet • Passcode from G2'
+                  : 'To connect, update the URL in src/config.ts and redeploy'
+                }
+              </p>
             </div>
-            <h3 className="font-display text-lg font-semibold text-text-primary">Integration</h3>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-text-secondary uppercase tracking-elegant mb-2">Google Apps Script URL</label>
-            <div className="relative">
-              <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-              <input
-                type="url"
-                value={form.scriptUrl}
-                onChange={e => updateField('scriptUrl', e.target.value)}
-                placeholder="https://script.google.com/..."
-                className="w-full pl-11 pr-4 py-3 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green bg-soft-neutral"
-              />
-            </div>
-            <p className="text-xs text-text-muted mt-2 pl-4">https://script.google.com/macros/s/AKfycbxXoOHSW8qlpdxZnWqidDrYnH_KdSs4qh_DHU8TGw7R652XJ8PfI8Tap0qXd0QSb0hk/exec</p>
           </div>
         </div>
 
