@@ -103,7 +103,7 @@ export default function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
                   value={passcode}
                   onChange={e => { setPasscode(e.target.value); setError(''); }}
                   required
-                  placeholder={isOnline ? 'Enter passcode from Sheet G2' : 'Enter 123456'}
+                  placeholder={isOnline ? 'Enter passcode ' : 'Enter 123456'}
                   className="w-full pl-12 pr-4 py-4 rounded-full border border-warm-gray text-sm focus:outline-none focus:border-forest-green transition-colors bg-natural-white"
                   autoFocus
                 />
