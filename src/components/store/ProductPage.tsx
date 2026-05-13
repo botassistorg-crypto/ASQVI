@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Star, Check, ShoppingBag } from 'lucide-react';
 import { Product } from '../../types';
+import FormattedText from '../ui/FormattedText';
 
 interface ProductPageProps {
   product: Product;
@@ -97,9 +98,10 @@ export default function ProductPage({
             </div>
 
             {/* Description */}
-            <p className="text-text-secondary leading-relaxed mb-6 text-sm">
-              {product.fullDescription || product.description}
-            </p>
+            <FormattedText 
+              text={product.fullDescription || product.description} 
+              className="text-text-secondary leading-relaxed mb-6 text-sm"
+            />
 
             {/* Features */}
             {product.features && product.features.length > 0 && (
