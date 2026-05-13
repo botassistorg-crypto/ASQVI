@@ -16,9 +16,9 @@ interface AdminPanelProps {
   settings: SiteSettings;
   onUpdateStatus: (orderId: string, status: Order['status']) => boolean;
   onDeleteOrder: (orderId: string) => boolean;
-  onAddProduct: (product: Omit<Product, 'id'>) => Product | null;
-  onUpdateProduct: (productId: string, updates: Partial<Product>) => boolean;
-  onDeleteProduct: (productId: string) => boolean;
+  onAddProduct: (product: Omit<Product, 'id'>) => Promise<Product | null>;
+  onUpdateProduct: (productId: string, updates: Partial<Product>) => Promise<boolean>;
+  onDeleteProduct: (productId: string) => Promise<boolean>;
   onAddCategory: (category: Omit<Category, 'id'>) => Category | null;
   onUpdateCategory: (categoryId: string, updates: Partial<Category>) => boolean;
   onDeleteCategory: (categoryId: string) => boolean;
