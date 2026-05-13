@@ -1,4 +1,4 @@
-import { ArrowRight, Star } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Product } from '../../types';
 
 interface ProductCardProps {
@@ -9,95 +9,62 @@ interface ProductCardProps {
   currency: string;
 }
 
-export default function ProductCard({ product, index, onBuy, onViewProduct, currency }: ProductCardProps) {
+export default function ProductCard({ product, onBuy, onViewProduct, currency }: ProductCardProps) {
   const currencySymbol = currency === 'BDT' ? '৳' : '$';
 
-  const badgeColors: Record<string, string> = {
-    'Best Seller': 'bg-forest-green text-natural-white',
-    'Featured': 'bg-forest-green text-natural-white',
-    'New': 'bg-text-primary text-natural-white',
-    'Popular': 'bg-warning text-text-primary',
-    'Premium': 'bg-text-primary text-natural-white',
-  };
-
   const handleCardClick = () => {
-    if (onViewProduct) {
-      onViewProduct(product.id);
-    }
+    if (onViewProduct) onViewProduct(product.id);
   };
 
   return (
     <div
-      className={`group bg-natural-white rounded-3xl overflow-hidden border border-soft-neutral hover:border-forest-green/30 transition-all duration-500 hover:shadow-xl hover:shadow-forest-green/5 animate-fade-in opacity-0 stagger-${Math.min(index + 1, 8)} ${onViewProduct ? 'cursor-pointer' : ''}`}
+      className={`group bg-natural-white rounded-2xl overflow-hidden border border-soft-neutral hover:border-forest-green/30 transition-all duration-300 hover:shadow-lg ${onViewProduct ? 'cursor-pointer' : ''}`}
       onClick={handleCardClick}
     >
-      {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-soft-neutral">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-          loading="lazy"
-        />
-        {product.badge && (
-          <span className={`absolute top-4 left-4 px-4 py-1.5 rounded-full text-xs font-medium uppercase tracking-elegant ${badgeColors[product.badge] || 'bg-forest-green text-natural-white'}`}>
-            {product.badge}
-          </span>
-        )}
+      {/* Image — object-contain so nothing gets cropped */}
+      <div className="bg-soft-neutral p-3">
+        <div className="relative rounded-xl overflow-hidden bg-white flex items-center justify-center" style={{ height: '180px' }}>
+          <img
+            src={product.image}
+            alt={product.name}
+            className="max-w-full max-h-full object-contain"
+            loading="lazy"
+          />
+          {product.badge && (
+            <span className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-forest-green text-natural-white text-[10px] font-semibold uppercase tracking-wider">
+              {product.badge}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="p-6">
-        {/* Category */}
-        <p className="text-xs font-medium text-forest-green uppercase tracking-elegant mb-3">
+      {/* Content — compact */}
+      <div className="px-4 pb-4 pt-2">
+        <p className="text-[10px] font-semibold text-forest-green uppercase tracking-wider mb-1">
           {product.category}
         </p>
 
-        {/* Name */}
-        <h3 className="font-display text-xl font-semibold text-text-primary mb-2 line-clamp-1 group-hover:text-forest-green transition-colors">
+        <h3 className="font-display text-base font-semibold text-text-primary mb-1 line-clamp-1 group-hover:text-forest-green transition-colors">
           {product.name}
         </h3>
 
-        {/* Description */}
-        <p className="text-sm text-text-secondary line-clamp-2 mb-4 leading-relaxed">
+        <p className="text-xs text-text-secondary line-clamp-2 mb-3 leading-relaxed">
           {product.description}
         </p>
 
-        {/* Rating */}
-        <div className="flex items-center gap-2 mb-5">
-          <div className="flex items-center gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className={`w-4 h-4 ${
-                  i < Math.floor(product.rating)
-                    ? 'text-warning fill-warning'
-                    : 'text-warm-gray'
-                }`}
-              />
-            ))}
-          </div>
-          <span className="text-xs text-text-muted">
-            ({product.reviews.toLocaleString()})
-          </span>
-        </div>
-
-        {/* Price & Button */}
         <div className="flex items-center justify-between">
-          <div>
-            <span className="font-display text-2xl font-semibold text-text-primary">
-              {currencySymbol}{product.price.toLocaleString()}
-            </span>
-          </div>
+          <span className="font-display text-lg font-semibold text-text-primary">
+            {currencySymbol}{product.price.toLocaleString()}
+          </span>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onBuy(product);
             }}
-            className="flex items-center gap-2 px-6 py-3 rounded-full bg-forest-green text-natural-white text-xs font-medium uppercase tracking-elegant hover:bg-forest-green-dark transition-all group/btn"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-forest-green text-natural-white text-[11px] font-medium uppercase tracking-wider hover:bg-forest-green-dark transition-all group/btn"
           >
             Acquire
-            <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+            <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
           </button>
         </div>
       </div>
