@@ -1,5 +1,4 @@
 import { Order, SiteSettings, Product, Category } from '../types';
-import { products as defaultProductsList } from './products';
 import { APPS_SCRIPT_URL, OFFLINE_OTP, isScriptConfigured } from '../config';
 
 const ORDERS_KEY = 'asqvi_orders';
@@ -36,6 +35,137 @@ function isLoggedIn(): boolean {
   return !!getStoredPasscode() && isAuthenticated();
 }
 
+async function scriptPost(data: any): Promise<any> {
+  const response = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  const text = await response.text();
+  return JSON.parse(text);
+}
+
+// ============ PRODUCTS — GOOGLE SHEET ============
+
+/**
+ * Fetch products from Google Sheet.
+ * Falls back to localStorage if Sheet is unavailable.
+ */
+export async function fetchProductsFromSheet(): Promise<Product[]> {
+  if (!isScriptConfigured()) {
+    return getProductsLocal();
+  }
+
+  try {
+    const url = APPS_SCRIPT_URL + '?action=getProducts';
+    const response = await fetch(url);
+    const text = await response.text();
+    const result = JSON.parse(text);
+
+    if (result.success && Array.isArray(result.products)) {
+      // Cache in localStorage
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(result.products));
+      return result.products;
+    }
+  } catch (err) {
+    console.error('Failed to fetch products from Sheet:', err);
+  }
+
+  // Fallback to cached
+  return getProductsLocal();
+}
+
+export async function addProductToSheet(product: Omit<Product, 'id'>): Promise<Product | null> {
+  if (!isLoggedIn()) return null;
+
+  const id = 'prod-' + Date.now();
+  const newProduct: Product = { ...product, id };
+
+  if (isScriptConfigured()) {
+    try {
+      const result = await scriptPost({
+        action: 'addProduct',
+        passcode: getStoredPasscode(),
+        ...newProduct,
+      });
+      if (!result.success) return null;
+    } catch (err) {
+      console.error('Failed to add product to Sheet:', err);
+      return null;
+    }
+  }
+
+  // Also update local cache
+  const products = getProductsLocal();
+  products.unshift(newProduct);
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  return newProduct;
+}
+
+export async function updateProductOnSheet(productId: string, updates: Partial<Product>): Promise<boolean> {
+  if (!isLoggedIn()) return false;
+
+  // Update local cache first
+  const products = getProductsLocal();
+  const idx = products.findIndex(p => p.id === productId);
+  if (idx === -1) return false;
+  const updated = { ...products[idx], ...updates };
+  products[idx] = updated;
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+
+  if (isScriptConfigured()) {
+    try {
+      const result = await scriptPost({
+        action: 'updateProduct',
+        passcode: getStoredPasscode(),
+        ...updated,
+      });
+      if (!result.success) return false;
+    } catch (err) {
+      console.error('Failed to update product on Sheet:', err);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export async function deleteProductFromSheet(productId: string): Promise<boolean> {
+  if (!isLoggedIn()) return false;
+
+  if (isScriptConfigured()) {
+    try {
+      const result = await scriptPost({
+        action: 'deleteProduct',
+        passcode: getStoredPasscode(),
+        id: productId,
+      });
+      if (!result.success) return false;
+    } catch (err) {
+      console.error('Failed to delete product from Sheet:', err);
+      return false;
+    }
+  }
+
+  // Update local cache
+  const products = getProductsLocal();
+  const filtered = products.filter(p => p.id !== productId);
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(filtered));
+  return true;
+}
+
+// ============ PRODUCTS — LOCAL (cache/fallback) ============
+
+export function getProductsLocal(): Product[] {
+  const stored = localStorage.getItem(PRODUCTS_KEY);
+  if (stored) return JSON.parse(stored);
+  return [];
+}
+
+export function getProductCategories(): string[] {
+  const products = getProductsLocal();
+  return ['All', ...Array.from(new Set(products.map(p => p.category)))];
+}
+
 // ============ ORDERS ============
 
 export function getOrders(): Order[] {
@@ -60,7 +190,6 @@ export async function addOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>
   orders.unshift(newOrder);
   saveOrders(orders);
 
-  // Sync to Google Sheet
   if (isScriptConfigured()) {
     try {
       await fetch(APPS_SCRIPT_URL, {
@@ -76,7 +205,7 @@ export async function addOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>
         }),
       });
     } catch (err) {
-      console.error('Sheet sync failed (order saved locally):', err);
+      console.error('Sheet sync failed:', err);
     }
   }
 
@@ -99,51 +228,6 @@ export function deleteOrder(orderId: string): boolean {
   const filtered = orders.filter(o => o.id !== orderId);
   saveOrders(filtered);
   return true;
-}
-
-// ============ PRODUCTS ============
-
-export function getProducts(): Product[] {
-  const stored = localStorage.getItem(PRODUCTS_KEY);
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(defaultProductsList));
-  return defaultProductsList;
-}
-
-export function saveProducts(products: Product[]): void {
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
-}
-
-export function addProduct(product: Omit<Product, 'id'>): Product | null {
-  if (!isLoggedIn()) return null;
-  const products = getProducts();
-  const newProduct: Product = { ...product, id: `prod-${Date.now()}` };
-  products.unshift(newProduct);
-  saveProducts(products);
-  return newProduct;
-}
-
-export function updateProduct(productId: string, updates: Partial<Product>): boolean {
-  if (!isLoggedIn()) return false;
-  const products = getProducts();
-  const idx = products.findIndex(p => p.id === productId);
-  if (idx === -1) return false;
-  products[idx] = { ...products[idx], ...updates };
-  saveProducts(products);
-  return true;
-}
-
-export function deleteProduct(productId: string): boolean {
-  if (!isLoggedIn()) return false;
-  const products = getProducts();
-  const filtered = products.filter(p => p.id !== productId);
-  saveProducts(filtered);
-  return true;
-}
-
-export function getProductCategories(): string[] {
-  const products = getProducts();
-  return ['All', ...Array.from(new Set(products.map(p => p.category)))];
 }
 
 // ============ CATEGORIES ============
@@ -192,7 +276,6 @@ export function getSettings(): SiteSettings {
   const stored = localStorage.getItem(SETTINGS_KEY);
   if (stored) {
     const parsed = JSON.parse(stored);
-    // Clean up old scriptUrl if it exists in localStorage
     if ('scriptUrl' in parsed) {
       delete parsed.scriptUrl;
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
@@ -211,37 +294,17 @@ export function saveSettings(settings: SiteSettings): boolean {
 
 // ============ AUTH ============
 
-/**
- * Verify passcode against Google Sheet cell G2 via Apps Script.
- * Falls back to offline OTP only when APPS_SCRIPT_URL in config.ts is empty.
- * 
- * The URL is hardcoded in src/config.ts — NOT in localStorage.
- * This prevents anyone from changing it via browser console.
- */
 export async function verifyPasscode(passcode: string): Promise<boolean> {
-  // If no Apps Script URL configured in config.ts → use offline fallback
   if (!isScriptConfigured()) {
     return passcode === OFFLINE_OTP;
   }
 
   try {
-    const response = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      // No Content-Type header — avoids CORS preflight
-      body: JSON.stringify({
-        action: 'verify',
-        passcode: passcode,
-      }),
+    const result = await scriptPost({
+      action: 'verify',
+      passcode: passcode,
     });
-
-    const text = await response.text();
-
-    try {
-      const result = JSON.parse(text);
-      return result.success === true;
-    } catch {
-      return false;
-    }
+    return result.success === true;
   } catch {
     return false;
   }
