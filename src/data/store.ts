@@ -35,6 +35,13 @@ function isLoggedIn(): boolean {
   return !!getStoredPasscode() && isAuthenticated();
 }
 
+/** Convert literal \n strings to actual newlines */
+function fixLineBreaks(text: string): string {
+  if (!text) return '';
+  // Replace literal two-char \n with actual newline
+  return text.replace(/\\n/g, '\n');
+}
+
 async function scriptPost(data: any): Promise<any> {
   const response = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
@@ -62,9 +69,15 @@ export async function fetchProductsFromSheet(): Promise<Product[]> {
     const result = JSON.parse(text);
 
     if (result.success && Array.isArray(result.products)) {
+      // Fix descriptions — Google Sheets may store \n as literal text
+      const cleaned = result.products.map((p: any) => ({
+        ...p,
+        description: fixLineBreaks(p.description || ''),
+        fullDescription: fixLineBreaks(p.fullDescription || ''),
+      }));
       // Cache in localStorage
-      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(result.products));
-      return result.products;
+      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(cleaned));
+      return cleaned;
     }
   } catch (err) {
     console.error('Failed to fetch products from Sheet:', err);
