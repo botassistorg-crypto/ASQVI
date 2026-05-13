@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   Plus, Search, Pencil, Trash2, Package, Image as ImageIcon,
-  Save, Loader2, AlertTriangle, Star, DollarSign, X, Link2, Upload, CheckCircle
+  Save, Loader2, AlertTriangle, Star, DollarSign, X, Link2, Upload, CheckCircle, Download
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { Product, Category } from '../../types';
@@ -11,9 +11,9 @@ interface ProductsPanelProps {
   products: Product[];
   categories: Category[];
   currency: string;
-  onAddProduct: (product: Omit<Product, 'id'>) => Product | null;
-  onUpdateProduct: (productId: string, updates: Partial<Product>) => boolean;
-  onDeleteProduct: (productId: string) => boolean;
+  onAddProduct: (product: Omit<Product, 'id'>) => Promise<Product | null>;
+  onUpdateProduct: (productId: string, updates: Partial<Product>) => Promise<boolean>;
+  onDeleteProduct: (productId: string) => Promise<boolean>;
 }
 
 const defaultProduct: Omit<Product, 'id'> = {
@@ -97,12 +97,11 @@ export default function ProductsPanel({
     if (!formData.name || !formData.price || !formData.image) return;
     
     setSaving(true);
-    await new Promise(r => setTimeout(r, 300));
 
     if (editingProduct) {
-      onUpdateProduct(editingProduct.id, formData);
+      await onUpdateProduct(editingProduct.id, formData);
     } else {
-      onAddProduct(formData);
+      await onAddProduct(formData);
     }
 
     setSaving(false);
@@ -111,8 +110,8 @@ export default function ProductsPanel({
     setEditingProduct(null);
   };
 
-  const handleDelete = (productId: string) => {
-    onDeleteProduct(productId);
+  const handleDelete = async (productId: string) => {
+    await onDeleteProduct(productId);
     setDeleteConfirm(null);
   };
 
@@ -192,6 +191,36 @@ export default function ProductsPanel({
     }
   };
 
+  const [showExport, setShowExport] = useState(false);
+
+  const handleExport = () => {
+    const code = products.map(p => {
+      const obj: any = {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        price: p.price,
+        category: p.category,
+        image: p.image,
+        rating: p.rating,
+        reviews: p.reviews,
+        inStock: p.inStock,
+      };
+      if (p.fullDescription) obj.fullDescription = p.fullDescription;
+      if (p.images && p.images.length > 0) obj.images = p.images;
+      if (p.badge) obj.badge = p.badge;
+      if (p.featured) obj.featured = true;
+      if (p.features && p.features.length > 0) obj.features = p.features;
+      if (p.relatedProducts && p.relatedProducts.length > 0) obj.relatedProducts = p.relatedProducts;
+      return obj;
+    });
+    const output = JSON.stringify(code, null, 2);
+    navigator.clipboard.writeText(output).then(() => {
+      setShowExport(true);
+      setTimeout(() => setShowExport(false), 3000);
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -200,13 +229,31 @@ export default function ProductsPanel({
           <h2 className="font-display text-2xl font-semibold text-gray-900">Products</h2>
           <p className="text-sm text-gray-500 mt-1">Manage your digital product catalog</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#4A5D4E] hover:bg-[#3d4e41] text-white text-sm font-medium transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Add Product
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-all"
+          >
+            {showExport ? (
+              <>
+                <CheckCircle className="w-4 h-4 text-[#4A5D4E]" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Export
+              </>
+            )}
+          </button>
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#4A5D4E] hover:bg-[#3d4e41] text-white text-sm font-medium transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Add Product
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
