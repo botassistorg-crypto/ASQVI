@@ -12,14 +12,15 @@ import AdminLogin from './components/admin/AdminLogin';
 import AdminPanel from './components/admin/AdminPanel';
 import {
   getOrders, addOrder, updateOrderStatus, deleteOrder,
-  getProducts, addProduct, updateProduct, deleteProduct, getProductCategories,
+  fetchProductsFromSheet, addProductToSheet, updateProductOnSheet, deleteProductFromSheet,
+  getProductsLocal, getProductCategories,
   getCategories, addCategory, updateCategory, deleteCategory,
   getSettings, saveSettings, verifyPasscode,
   isAuthenticated, setAuthenticated,
   getStoredPasscode, setStoredPasscode,
 } from './data/store';
 import { Product, Order, SiteSettings, Category } from './types';
-import { Package } from 'lucide-react';
+import { Package, Loader2 } from 'lucide-react';
 
 type View = 'store' | 'product' | 'admin-login' | 'admin-panel';
 
@@ -30,10 +31,25 @@ export default function App() {
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>(getOrders());
-  const [products, setProducts] = useState<Product[]>(getProducts());
+  const [products, setProducts] = useState<Product[]>(getProductsLocal());
   const [categories, setCategories] = useState<Category[]>(getCategories());
   const [productCategories, setProductCategories] = useState<string[]>(getProductCategories());
   const [settings, setSettings] = useState<SiteSettings>(getSettings());
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
+  // Load products from Google Sheet on mount
+  useEffect(() => {
+    setLoadingProducts(true);
+    fetchProductsFromSheet()
+      .then(fetched => {
+        setProducts(fetched);
+        setLoadingProducts(false);
+      })
+      .catch(() => {
+        setProducts(getProductsLocal());
+        setLoadingProducts(false);
+      });
+  }, []);
 
   useEffect(() => {
     setProductCategories(getProductCategories());
@@ -43,8 +59,8 @@ export default function App() {
     ? products
     : products.filter(p => p.category === selectedCategory);
 
-  const selectedProduct = selectedProductId 
-    ? products.find(p => p.id === selectedProductId) 
+  const selectedProduct = selectedProductId
+    ? products.find(p => p.id === selectedProductId)
     : null;
 
   const relatedProducts = selectedProduct?.relatedProducts
@@ -82,7 +98,7 @@ export default function App() {
       toast.success(`Order placed! ID: ${order.id}`, { icon: '✨', duration: 4000 });
     } catch (err) {
       console.error('Order error:', err);
-      toast.error('Failed to place order. Please try again.');
+      toast.error('Failed to place order.');
     }
   };
 
@@ -96,8 +112,7 @@ export default function App() {
         toast.success('Welcome to Site Engine', { icon: '🔐' });
       }
       return valid;
-    } catch (err) {
-      console.error('Login error:', err);
+    } catch {
       return false;
     }
   }, []);
@@ -109,11 +124,6 @@ export default function App() {
       toast.success(`Order → ${status}`, {
         icon: status === 'Sent' ? '📦' : status === 'Cancelled' ? '❌' : '✅',
       });
-      if (status === 'Sent') {
-        toast('Customer notified via email', { icon: '📧', duration: 3000 });
-      }
-    } else {
-      toast.error('Session expired. Please re-login.');
     }
     return success;
   }, []);
@@ -127,57 +137,55 @@ export default function App() {
     return success;
   }, []);
 
-  const handleAddProduct = useCallback((productData: Omit<Product, 'id'>): Product | null => {
-    const newProduct = addProduct(productData);
+  // Product management — async, syncs with Google Sheet
+  const handleAddProduct = useCallback(async (productData: Omit<Product, 'id'>): Promise<Product | null> => {
+    const newProduct = await addProductToSheet(productData);
     if (newProduct) {
-      setProducts(getProducts());
+      setProducts(getProductsLocal());
       toast.success('Product added', { icon: '🛍️' });
+    } else {
+      toast.error('Failed to add product');
     }
     return newProduct;
   }, []);
 
-  const handleUpdateProduct = useCallback((productId: string, updates: Partial<Product>): boolean => {
-    const success = updateProduct(productId, updates);
+  const handleUpdateProduct = useCallback(async (productId: string, updates: Partial<Product>): Promise<boolean> => {
+    const success = await updateProductOnSheet(productId, updates);
     if (success) {
-      setProducts(getProducts());
+      setProducts(getProductsLocal());
       toast.success('Product updated');
+    } else {
+      toast.error('Failed to update product');
     }
     return success;
   }, []);
 
-  const handleDeleteProduct = useCallback((productId: string): boolean => {
-    const success = deleteProduct(productId);
+  const handleDeleteProduct = useCallback(async (productId: string): Promise<boolean> => {
+    const success = await deleteProductFromSheet(productId);
     if (success) {
-      setProducts(getProducts());
+      setProducts(getProductsLocal());
       toast.success('Product deleted');
+    } else {
+      toast.error('Failed to delete product');
     }
     return success;
   }, []);
 
   const handleAddCategory = useCallback((categoryData: Omit<Category, 'id'>): Category | null => {
     const newCategory = addCategory(categoryData);
-    if (newCategory) {
-      setCategories(getCategories());
-      toast.success('Category added');
-    }
+    if (newCategory) setCategories(getCategories());
     return newCategory;
   }, []);
 
   const handleUpdateCategory = useCallback((categoryId: string, updates: Partial<Category>): boolean => {
     const success = updateCategory(categoryId, updates);
-    if (success) {
-      setCategories(getCategories());
-      toast.success('Category updated');
-    }
+    if (success) setCategories(getCategories());
     return success;
   }, []);
 
   const handleDeleteCategory = useCallback((categoryId: string): boolean => {
     const success = deleteCategory(categoryId);
-    if (success) {
-      setCategories(getCategories());
-      toast.success('Category deleted');
-    }
+    if (success) setCategories(getCategories());
     return success;
   }, []);
 
@@ -194,7 +202,6 @@ export default function App() {
     setAuthenticated(false);
     setStoredPasscode('');
     setView('store');
-    toast('Logged out', { icon: '👋' });
   };
 
   const toastOptions = {
@@ -202,7 +209,7 @@ export default function App() {
     style: { fontFamily: 'Inter, sans-serif' },
   };
 
-  // Admin Login View
+  // Admin Login
   if (view === 'admin-login') {
     return (
       <>
@@ -212,7 +219,7 @@ export default function App() {
     );
   }
 
-  // Admin Panel View
+  // Admin Panel
   if (view === 'admin-panel') {
     return (
       <>
@@ -237,18 +244,15 @@ export default function App() {
     );
   }
 
-  // Product Page View
+  // Product Page
   if (view === 'product' && selectedProduct) {
     return (
       <>
         <Toaster position="top-right" toastOptions={toastOptions} />
         <Navbar
           onAdminClick={() => {
-            if (isAuthenticated() && getStoredPasscode()) {
-              setView('admin-panel');
-            } else {
-              setView('admin-login');
-            }
+            if (isAuthenticated() && getStoredPasscode()) setView('admin-panel');
+            else setView('admin-login');
           }}
           storeName={settings.storeName}
         />
@@ -273,42 +277,42 @@ export default function App() {
     );
   }
 
-  // Storefront View
+  // Storefront
   return (
     <div className="min-h-screen bg-natural-white">
       <Toaster position="top-right" toastOptions={toastOptions} />
 
       <Navbar
         onAdminClick={() => {
-          if (isAuthenticated() && getStoredPasscode()) {
-            setView('admin-panel');
-          } else {
-            setView('admin-login');
-          }
+          if (isAuthenticated() && getStoredPasscode()) setView('admin-panel');
+          else setView('admin-login');
         }}
         storeName={settings.storeName}
       />
 
       <Hero settings={settings} />
       <AboutSection settings={settings} />
-      <FeaturedProducts 
-        products={products} 
-        onBuy={handleBuy} 
-        onViewProduct={handleViewProduct}
-        currency={settings.currency} 
-      />
+
+      {!loadingProducts && (
+        <FeaturedProducts
+          products={products}
+          onBuy={handleBuy}
+          onViewProduct={handleViewProduct}
+          currency={settings.currency}
+        />
+      )}
 
       {/* Shop Section */}
       <section id="shop" className="py-24 sm:py-32 bg-soft-neutral">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-12">
-            <p className="text-xs font-medium text-forest-green uppercase tracking-elegant mb-4 animate-fade-in">Full Catalog</p>
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-semibold text-text-primary animate-fade-in stagger-1">
+            <p className="text-xs font-medium text-forest-green uppercase tracking-elegant mb-4">Full Catalog</p>
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-semibold text-text-primary">
               Shop All Products
             </h2>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-3 mb-12 animate-fade-in stagger-2">
+          <div className="flex flex-wrap justify-center gap-3 mb-12">
             {productCategories.map(cat => (
               <button
                 key={cat}
@@ -324,16 +328,21 @@ export default function App() {
             ))}
           </div>
 
-          {filteredProducts.length > 0 ? (
+          {loadingProducts ? (
+            <div className="text-center py-20">
+              <Loader2 className="w-10 h-10 text-forest-green mx-auto mb-4 animate-spin" />
+              <p className="text-text-muted font-medium">Loading products...</p>
+            </div>
+          ) : filteredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product, index) => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  index={index} 
-                  onBuy={handleBuy} 
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  index={index}
+                  onBuy={handleBuy}
                   onViewProduct={handleViewProduct}
-                  currency={settings.currency} 
+                  currency={settings.currency}
                 />
               ))}
             </div>
