@@ -48,7 +48,7 @@ export default function ProductCard({ product, onBuy, onViewProduct, currency }:
           {product.name}
         </h3>
 
-        <p className="text-xs text-text-secondary line-clamp-2 mb-3 leading-relaxed">
+        <p className="text-xs text-text-secondary line-clamp-2 mb-3 leading-relaxed whitespace-pre-line">
           {product.description}
         </p>
 
