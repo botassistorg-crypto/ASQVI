@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
-  LayoutDashboard, Package, Settings, LogOut, Leaf,
+  LayoutDashboard, Package, Settings, LogOut,
   Search, BarChart3, DollarSign, Clock, Users, ShoppingCart, FolderOpen
 } from 'lucide-react';
 import OrdersTable from './OrdersTable';
@@ -82,11 +82,12 @@ export default function AdminPanel({
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-natural-white border-r border-soft-neutral flex flex-col transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 h-20 border-b border-soft-neutral">
-          <div className="w-10 h-10 rounded-full bg-forest-green flex items-center justify-center">
-            <Leaf className="w-5 h-5 text-natural-white" />
-          </div>
+          <img
+            src="https://i.ibb.co.com/h1K82LNT/file-00000000050471faaf07c29464158bf6.png"
+            alt="ASQVI"
+            className="h-9 w-auto"
+          />
           <div>
-            <h2 className="font-display text-lg font-semibold text-text-primary">{settings.storeName}</h2>
             <p className="text-[10px] font-medium text-forest-green uppercase tracking-elegant">Site Engine</p>
           </div>
         </div>
