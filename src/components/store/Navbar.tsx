@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Menu, X, Leaf } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 interface NavbarProps {
   onAdminClick: () => void;
   storeName: string;
 }
 
-export default function Navbar({ onAdminClick, storeName }: NavbarProps) {
+export default function Navbar({ onAdminClick }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -14,13 +14,12 @@ export default function Navbar({ onAdminClick, storeName }: NavbarProps) {
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <a href="#" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-full bg-forest-green flex items-center justify-center transition-transform group-hover:scale-105">
-              <Leaf className="w-5 h-5 text-natural-white" />
-            </div>
-            <span className="text-xl font-display font-semibold text-text-primary tracking-wide">
-              {storeName}
-            </span>
+          <a href="#" className="block">
+            <img
+              src="https://i.ibb.co.com/h1K82LNT/file-00000000050471faaf07c29464158bf6.png"
+              alt="ASQVI"
+              className="h-14 sm:h-16 w-auto"
+            />
           </a>
 
           {/* Desktop Nav */}
@@ -56,33 +55,10 @@ export default function Navbar({ onAdminClick, storeName }: NavbarProps) {
       {mobileOpen && (
         <div className="md:hidden border-t border-soft-neutral bg-natural-white animate-slide-down">
           <div className="px-6 py-6 space-y-1">
-            <a 
-              href="#story" 
-              className="block px-4 py-3 rounded-full text-sm font-medium text-text-secondary hover:bg-soft-neutral uppercase tracking-elegant transition-colors"
-              onClick={() => setMobileOpen(false)}
-            >
-              Story
-            </a>
-            <a 
-              href="#collection" 
-              className="block px-4 py-3 rounded-full text-sm font-medium text-text-secondary hover:bg-soft-neutral uppercase tracking-elegant transition-colors"
-              onClick={() => setMobileOpen(false)}
-            >
-              Collection
-            </a>
-            <a 
-              href="#shop" 
-              className="block px-4 py-3 rounded-full text-sm font-medium text-text-secondary hover:bg-soft-neutral uppercase tracking-elegant transition-colors"
-              onClick={() => setMobileOpen(false)}
-            >
-              Shop
-            </a>
-            <button
-              onClick={() => { onAdminClick(); setMobileOpen(false); }}
-              className="w-full text-left px-4 py-3 rounded-full text-sm font-medium text-text-muted hover:bg-soft-neutral uppercase tracking-elegant transition-colors"
-            >
-              Site Engine
-            </button>
+            <a href="#story" className="block px-4 py-3 rounded-full text-sm font-medium text-text-secondary hover:bg-soft-neutral uppercase tracking-elegant transition-colors" onClick={() => setMobileOpen(false)}>Story</a>
+            <a href="#collection" className="block px-4 py-3 rounded-full text-sm font-medium text-text-secondary hover:bg-soft-neutral uppercase tracking-elegant transition-colors" onClick={() => setMobileOpen(false)}>Collection</a>
+            <a href="#shop" className="block px-4 py-3 rounded-full text-sm font-medium text-text-secondary hover:bg-soft-neutral uppercase tracking-elegant transition-colors" onClick={() => setMobileOpen(false)}>Shop</a>
+            <button onClick={() => { onAdminClick(); setMobileOpen(false); }} className="w-full text-left px-4 py-3 rounded-full text-sm font-medium text-text-muted hover:bg-soft-neutral uppercase tracking-elegant transition-colors">Site Engine</button>
           </div>
         </div>
       )}
