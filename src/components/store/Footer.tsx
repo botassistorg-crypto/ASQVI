@@ -1,4 +1,4 @@
-import { Leaf, Mail, Phone } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
 
 interface FooterProps {
   storeName: string;
@@ -12,11 +12,12 @@ export default function Footer({ storeName, bkashNumber }: FooterProps) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-full bg-forest-green flex items-center justify-center">
-                <Leaf className="w-5 h-5 text-natural-white" />
-              </div>
-              <span className="font-display text-xl font-semibold">{storeName}</span>
+            <div className="mb-6">
+              <img
+                src="https://i.ibb.co.com/h1K82LNT/file-00000000050471faaf07c29464158bf6.png"
+                alt="ASQVI"
+                className="h-12 w-auto brightness-0 invert"
+              />
             </div>
             <p className="text-sm text-white/60 leading-relaxed max-w-sm mb-6">
               Curating premium digital products designed to elevate your creative journey. Quality over quantity, always.
