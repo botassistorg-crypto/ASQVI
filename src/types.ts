@@ -36,7 +36,6 @@ export interface SiteSettings {
   aboutTitle: string;
   aboutText: string;
   bkashNumber: string;
-  scriptUrl: string;
   adminEmail: string;
   currency: string;
 }
@@ -48,3 +47,26 @@ export interface Category {
 }
 
 export type OrderStatus = Order['status'];
+
+export interface Offer {
+  id: string;
+  name: string;                    // Internal name for admin
+  type: 'discount' | 'bundle' | 'upsell' | 'freebie';
+  active: boolean;
+  productIds: string[];            // Products this offer applies to
+  discountPercent?: number;        // e.g. 20 for 20% off
+  discountFlat?: number;           // e.g. 500 for ৳500 off
+  bundleProductIds?: string[];     // Products included in bundle
+  bundlePrice?: number;            // Bundle price (overrides individual prices)
+  badge?: string;                  // Badge text shown on product e.g. "20% OFF"
+}
+
+export interface ThankYouConfig {
+  heading: string;                 // e.g. "Thank You for Your Purchase!"
+  message: string;                 // Rich text body
+  showUpsell: boolean;
+  upsellHeading: string;          // e.g. "Exclusive Offer — Just for You"
+  upsellProductIds: string[];     // Product IDs to show as upsell
+  upsellDiscount?: number;        // Discount % on upsell products
+  upsellBadge?: string;           // e.g. "50% OFF — Limited Time"
+}
