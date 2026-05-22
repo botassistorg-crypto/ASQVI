@@ -1,10 +1,12 @@
-import { Order, SiteSettings, Product, Category } from '../types';
+import { Order, SiteSettings, Product, Category, Offer, ThankYouConfig } from '../types';
 import { APPS_SCRIPT_URL, OFFLINE_OTP, isScriptConfigured } from '../config';
 
 const ORDERS_KEY = 'asqvi_orders';
 const SETTINGS_KEY = 'asqvi_settings';
 const PRODUCTS_KEY = 'asqvi_products';
 const CATEGORIES_KEY = 'asqvi_categories';
+const OFFERS_KEY = 'asqvi_offers';
+const THANKYOU_KEY = 'asqvi_thankyou';
 const AUTH_KEY = 'asqvi_auth';
 
 const defaultSettings: SiteSettings = {
@@ -341,4 +343,74 @@ export function getStoredPasscode(): string {
 
 export function setStoredPasscode(passcode: string): void {
   localStorage.setItem('asqvi_passcode', passcode);
+}
+
+// ============ OFFERS ============
+
+const defaultOffers: Offer[] = [];
+
+export function getOffers(): Offer[] {
+  const stored = localStorage.getItem(OFFERS_KEY);
+  if (stored) return JSON.parse(stored);
+  localStorage.setItem(OFFERS_KEY, JSON.stringify(defaultOffers));
+  return defaultOffers;
+}
+
+export function saveOffers(offers: Offer[]): void {
+  localStorage.setItem(OFFERS_KEY, JSON.stringify(offers));
+}
+
+export function addOffer(offer: Omit<Offer, 'id'>): Offer | null {
+  if (!isLoggedIn()) return null;
+  const offers = getOffers();
+  const newOffer: Offer = { ...offer, id: `offer-${Date.now()}` };
+  offers.unshift(newOffer);
+  saveOffers(offers);
+  return newOffer;
+}
+
+export function updateOffer(offerId: string, updates: Partial<Offer>): boolean {
+  if (!isLoggedIn()) return false;
+  const offers = getOffers();
+  const idx = offers.findIndex(o => o.id === offerId);
+  if (idx === -1) return false;
+  offers[idx] = { ...offers[idx], ...updates };
+  saveOffers(offers);
+  return true;
+}
+
+export function deleteOffer(offerId: string): boolean {
+  if (!isLoggedIn()) return false;
+  const offers = getOffers();
+  saveOffers(offers.filter(o => o.id !== offerId));
+  return true;
+}
+
+export function getActiveOfferForProduct(productId: string): Offer | undefined {
+  return getOffers().find(o => o.active && o.productIds.includes(productId));
+}
+
+// ============ THANK YOU CONFIG ============
+
+const defaultThankYou: ThankYouConfig = {
+  heading: 'Thank You for Your Purchase! 🎉',
+  message: 'Your order has been received successfully.\n\nWe will verify your payment and send you the access details to your email shortly.\n\nThank you for choosing ASQVI!',
+  showUpsell: false,
+  upsellHeading: 'Exclusive Offer — Just for You',
+  upsellProductIds: [],
+  upsellDiscount: 0,
+  upsellBadge: 'Special Deal',
+};
+
+export function getThankYouConfig(): ThankYouConfig {
+  const stored = localStorage.getItem(THANKYOU_KEY);
+  if (stored) return JSON.parse(stored);
+  localStorage.setItem(THANKYOU_KEY, JSON.stringify(defaultThankYou));
+  return defaultThankYou;
+}
+
+export function saveThankYouConfig(config: ThankYouConfig): boolean {
+  if (!isLoggedIn()) return false;
+  localStorage.setItem(THANKYOU_KEY, JSON.stringify(config));
+  return true;
 }
