@@ -1,18 +1,21 @@
 import { useState, useMemo } from 'react';
 import {
-  LayoutDashboard, Package, Settings, LogOut,
+  LayoutDashboard, Package, Settings, LogOut, Gift,
   Search, BarChart3, DollarSign, Clock, Users, ShoppingCart, FolderOpen
 } from 'lucide-react';
 import OrdersTable from './OrdersTable';
 import ProductsPanel from './ProductsPanel';
 import CategoriesPanel from './CategoriesPanel';
+import OffersPanel from './OffersPanel';
 import SettingsPanel from './SettingsPanel';
-import { Order, SiteSettings, Product, Category } from '../../types';
+import { Order, SiteSettings, Product, Category, Offer, ThankYouConfig } from '../../types';
 
 interface AdminPanelProps {
   orders: Order[];
   products: Product[];
   categories: Category[];
+  offers: Offer[];
+  thankYouConfig: ThankYouConfig;
   settings: SiteSettings;
   onUpdateStatus: (orderId: string, status: Order['status']) => boolean;
   onDeleteOrder: (orderId: string) => boolean;
@@ -22,27 +25,23 @@ interface AdminPanelProps {
   onAddCategory: (category: Omit<Category, 'id'>) => Category | null;
   onUpdateCategory: (categoryId: string, updates: Partial<Category>) => boolean;
   onDeleteCategory: (categoryId: string) => boolean;
+  onAddOffer: (offer: Omit<Offer, 'id'>) => Offer | null;
+  onUpdateOffer: (offerId: string, updates: Partial<Offer>) => boolean;
+  onDeleteOffer: (offerId: string) => boolean;
+  onSaveThankYou: (config: ThankYouConfig) => boolean;
   onSaveSettings: (settings: SiteSettings) => boolean;
   onLogout: () => void;
 }
 
-type Tab = 'dashboard' | 'orders' | 'products' | 'categories' | 'settings';
+type Tab = 'dashboard' | 'orders' | 'products' | 'categories' | 'offers' | 'settings';
 
 export default function AdminPanel({
-  orders,
-  products,
-  categories,
-  settings,
-  onUpdateStatus,
-  onDeleteOrder,
-  onAddProduct,
-  onUpdateProduct,
-  onDeleteProduct,
-  onAddCategory,
-  onUpdateCategory,
-  onDeleteCategory,
-  onSaveSettings,
-  onLogout,
+  orders, products, categories, offers, thankYouConfig, settings,
+  onUpdateStatus, onDeleteOrder,
+  onAddProduct, onUpdateProduct, onDeleteProduct,
+  onAddCategory, onUpdateCategory, onDeleteCategory,
+  onAddOffer, onUpdateOffer, onDeleteOffer, onSaveThankYou,
+  onSaveSettings, onLogout,
 }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -58,14 +57,16 @@ export default function AdminPanel({
       .reduce((sum, o) => sum + o.price, 0);
     const totalProducts = products.length;
     const totalCategories = categories.length;
-    return { total, pending, processed, sent, cancelled, revenue, totalProducts, totalCategories };
-  }, [orders, products, categories]);
+    const activeOffers = offers.filter(o => o.active).length;
+    return { total, pending, processed, sent, cancelled, revenue, totalProducts, totalCategories, activeOffers };
+  }, [orders, products, categories, offers]);
 
   const tabs = [
     { id: 'dashboard' as Tab, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'orders' as Tab, label: 'Orders', icon: Package, badge: stats.pending },
     { id: 'products' as Tab, label: 'Products', icon: ShoppingCart, badge: stats.totalProducts },
     { id: 'categories' as Tab, label: 'Categories', icon: FolderOpen, badge: stats.totalCategories },
+    { id: 'offers' as Tab, label: 'Offers', icon: Gift, badge: stats.activeOffers },
     { id: 'settings' as Tab, label: 'Settings', icon: Settings },
   ];
 
@@ -182,6 +183,18 @@ export default function AdminPanel({
               onAddCategory={onAddCategory}
               onUpdateCategory={onUpdateCategory}
               onDeleteCategory={onDeleteCategory}
+            />
+          )}
+          {activeTab === 'offers' && (
+            <OffersPanel
+              offers={offers}
+              products={products}
+              thankYouConfig={thankYouConfig}
+              currency={settings.currency}
+              onAddOffer={onAddOffer}
+              onUpdateOffer={onUpdateOffer}
+              onDeleteOffer={onDeleteOffer}
+              onSaveThankYou={onSaveThankYou}
             />
           )}
           {activeTab === 'settings' && (
