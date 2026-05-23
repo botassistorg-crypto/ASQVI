@@ -16,7 +16,7 @@ const defaultSettings: SiteSettings = {
   heroSubheading: 'Handcrafted digital products designed to elevate your creative journey',
   aboutTitle: 'Our Story',
   aboutText: 'We believe in the power of thoughtfully crafted digital products. Each piece in our collection is carefully curated to bring exceptional value to creators, entrepreneurs, and visionaries who demand nothing but the finest.',
-  bkashNumber: '01XXXXXXXXX',
+  bkashNumber: '01628164979',
   adminEmail: 'admin@asqvi.com',
   currency: 'BDT',
 };
