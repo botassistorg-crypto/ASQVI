@@ -1,4 +1,4 @@
-import { Order, SiteSettings, Product, Category, Offer, ThankYouConfig } from '../types';
+import { Order, SiteSettings, Product, Category, Offer, ThankYouConfig, ThankYouRule } from '../types';
 import { APPS_SCRIPT_URL, OFFLINE_OTP, isScriptConfigured } from '../config';
 
 const ORDERS_KEY = 'asqvi_orders';
@@ -393,18 +393,21 @@ export function getActiveOfferForProduct(productId: string): Offer | undefined {
 // ============ THANK YOU CONFIG ============
 
 const defaultThankYou: ThankYouConfig = {
-  heading: 'Thank You for Your Purchase! 🎉',
-  message: 'Your order has been received successfully.\n\nWe will verify your payment and send you the access details to your email shortly.\n\nThank you for choosing ASQVI!',
-  showUpsell: false,
-  upsellHeading: 'Exclusive Offer — Just for You',
-  upsellProductIds: [],
-  upsellDiscount: 0,
-  upsellBadge: 'Special Deal',
+  defaultHeading: 'Thank You for Your Purchase! 🎉',
+  defaultMessage: 'Your order has been received successfully.\n\nWe will verify your payment and send you the access details to your email shortly.\n\nThank you for choosing ASQVI!',
+  rules: [],
 };
 
 export function getThankYouConfig(): ThankYouConfig {
   const stored = localStorage.getItem(THANKYOU_KEY);
-  if (stored) return JSON.parse(stored);
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    // Migrate old format
+    if (!parsed.rules) {
+      return defaultThankYou;
+    }
+    return parsed;
+  }
   localStorage.setItem(THANKYOU_KEY, JSON.stringify(defaultThankYou));
   return defaultThankYou;
 }
@@ -413,4 +416,11 @@ export function saveThankYouConfig(config: ThankYouConfig): boolean {
   if (!isLoggedIn()) return false;
   localStorage.setItem(THANKYOU_KEY, JSON.stringify(config));
   return true;
+}
+
+/** Find the matching thank-you rule for a purchased product */
+export function getThankYouRuleForProduct(productId: string): ThankYouRule | null {
+  const config = getThankYouConfig();
+  const rule = config.rules.find(r => r.active && r.triggerProductIds.includes(productId));
+  return rule || null;
 }
