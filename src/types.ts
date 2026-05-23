@@ -61,12 +61,22 @@ export interface Offer {
   badge?: string;                  // Badge text shown on product e.g. "20% OFF"
 }
 
-export interface ThankYouConfig {
-  heading: string;                 // e.g. "Thank You for Your Purchase!"
-  message: string;                 // Rich text body
+export interface ThankYouRule {
+  id: string;
+  name: string;                    // Admin label e.g. "eBook buyers → Course upsell"
+  active: boolean;
+  triggerProductIds: string[];     // When ANY of these products is purchased...
+  heading: string;                 // Thank you heading
+  message: string;                 // Thank you body (formatted text)
   showUpsell: boolean;
-  upsellHeading: string;          // e.g. "Exclusive Offer — Just for You"
-  upsellProductIds: string[];     // Product IDs to show as upsell
+  upsellHeading: string;          // "Exclusive Offer — Just for You"
+  upsellProductIds: string[];     // ...show THESE products as upsell
   upsellDiscount?: number;        // Discount % on upsell products
-  upsellBadge?: string;           // e.g. "50% OFF — Limited Time"
+  upsellBadge?: string;           // "50% OFF — Limited Time"
+}
+
+export interface ThankYouConfig {
+  defaultHeading: string;          // Fallback when no rule matches
+  defaultMessage: string;          // Fallback message
+  rules: ThankYouRule[];           // Per-product upsell rules
 }
