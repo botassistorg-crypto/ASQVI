@@ -194,7 +194,10 @@ export function saveOrders(orders: Order[]): void {
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 }
 
-export async function addOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>): Promise<Order> {
+export async function addOrder(
+  order: Omit<Order, 'id' | 'createdAt' | 'status'>,
+  options?: { orderType?: string; offerDetails?: string }
+): Promise<Order> {
   const orders = getOrders();
   const newOrder: Order = {
     ...order,
@@ -217,6 +220,8 @@ export async function addOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>
           product: order.product,
           price: order.price,
           senderBkash: order.senderBkash,
+          orderType: options?.orderType || 'direct',
+          offerDetails: options?.offerDetails || '',
         }),
       });
     } catch (err) {
