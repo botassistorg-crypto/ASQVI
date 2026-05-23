@@ -70,8 +70,13 @@ export default function App() {
   const relatedProducts = selectedProduct?.relatedProducts
     ? products.filter(p => selectedProduct.relatedProducts?.includes(p.id)) : [];
 
-  const upsellProducts = thankYouConfig.upsellProductIds
-    .map(id => products.find(p => p.id === id)).filter(Boolean) as Product[];
+  // Find the matching thank-you upsell rule for the last purchased product
+  const matchedRule = lastOrder && checkoutProduct
+    ? thankYouConfig.rules.find(r => r.active && r.triggerProductIds.includes(checkoutProduct.id)) || null
+    : null;
+  const upsellProducts = matchedRule
+    ? matchedRule.upsellProductIds.map(id => products.find(p => p.id === id)).filter(Boolean) as Product[]
+    : [];
 
   // --- STOREFRONT HANDLERS ---
 
@@ -215,7 +220,11 @@ export default function App() {
     <><Toaster position="top-right" toastOptions={toastOpts} />
       <Navbar onAdminClick={() => { if (isAuthenticated() && getStoredPasscode()) setView('admin-panel'); else setView('admin-login'); }} storeName={settings.storeName} />
       <ThankYouPage
-        order={lastOrder} config={thankYouConfig} upsellProducts={upsellProducts}
+        order={lastOrder}
+        heading={matchedRule?.heading || thankYouConfig.defaultHeading}
+        message={matchedRule?.message || thankYouConfig.defaultMessage}
+        rule={matchedRule}
+        upsellProducts={upsellProducts}
         currency={settings.currency} onBuyUpsell={handleBuyUpsell} onBackToStore={handleBackToStore}
       />
       <CheckoutModal isOpen={checkoutOpen} onClose={() => setCheckoutOpen(false)} product={checkoutProduct}
