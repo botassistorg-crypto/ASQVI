@@ -34,6 +34,7 @@ export default function App() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [isUpsellPurchase, setIsUpsellPurchase] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>(getOrders());
   const [products, setProducts] = useState<Product[]>(getProductsLocal());
@@ -83,6 +84,7 @@ export default function App() {
   const handleBuy = (product: Product) => {
     setCheckoutProduct(product);
     setCheckoutOpen(true);
+    setIsUpsellPurchase(false);
     trackInitiateCheckout({ id: product.id, name: product.name, price: product.price });
   };
 
@@ -99,13 +101,23 @@ export default function App() {
   const handleCheckoutSubmit = async (data: { name: string; whatsapp: string; email: string; senderBkash: string }) => {
     if (!checkoutProduct) return;
     try {
-      const order = await addOrder({
-        name: data.name, whatsapp: data.whatsapp, email: data.email,
-        senderBkash: data.senderBkash, product: checkoutProduct.name, price: checkoutProduct.price,
-      });
+      // Build offer details string for Sheet
+      let offerDetails = '';
+      if (isUpsellPurchase && matchedRule) {
+        offerDetails = matchedRule.upsellDiscount
+          ? `${matchedRule.upsellDiscount}% OFF via "${matchedRule.name}"`
+          : `Upsell via "${matchedRule.name}"`;
+      }
+
+      const order = await addOrder(
+        { name: data.name, whatsapp: data.whatsapp, email: data.email,
+          senderBkash: data.senderBkash, product: checkoutProduct.name, price: checkoutProduct.price },
+        { orderType: isUpsellPurchase ? 'upsell' : 'direct', offerDetails }
+      );
       setOrders(getOrders());
       setLastOrder(order);
       setCheckoutOpen(false);
+      setIsUpsellPurchase(false);
       trackPurchase({ id: order.id, product: order.product, price: order.price });
       setView('thankyou');
       window.scrollTo(0, 0);
@@ -118,6 +130,7 @@ export default function App() {
   const handleBuyUpsell = (product: Product) => {
     setCheckoutProduct(product);
     setCheckoutOpen(true);
+    setIsUpsellPurchase(true);
     trackInitiateCheckout({ id: product.id, name: product.name, price: product.price });
   };
 
