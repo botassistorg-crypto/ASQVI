@@ -53,6 +53,7 @@ export interface Offer {
   name: string;                    // Internal name for admin
   type: 'discount' | 'bundle' | 'upsell' | 'freebie';
   active: boolean;
+  category?: string;               // Category this offer belongs to (for grouping)
   productIds: string[];            // Products this offer applies to
   discountPercent?: number;        // e.g. 20 for 20% off
   discountFlat?: number;           // e.g. 500 for ৳500 off
