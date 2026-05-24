@@ -16,7 +16,7 @@ const defaultSettings: SiteSettings = {
   heroSubheading: 'Handcrafted digital products designed to elevate your creative journey',
   aboutTitle: 'Our Story',
   aboutText: 'We believe in the power of thoughtfully crafted digital products. Each piece in our collection is carefully curated to bring exceptional value to creators, entrepreneurs, and visionaries who demand nothing but the finest.',
-  bkashNumber: '01628164979',
+  bkashNumber: '01XXXXXXXXX',
   adminEmail: 'admin@asqvi.com',
   currency: 'BDT',
 };
@@ -196,7 +196,7 @@ export function saveOrders(orders: Order[]): void {
 
 export async function addOrder(
   order: Omit<Order, 'id' | 'createdAt' | 'status'>,
-  options?: { orderType?: string; offerDetails?: string }
+  options?: { orderType?: string; offerDetails?: string; originalPrice?: number }
 ): Promise<Order> {
   const orders = getOrders();
   const newOrder: Order = {
@@ -222,6 +222,7 @@ export async function addOrder(
           senderBkash: order.senderBkash,
           orderType: options?.orderType || 'direct',
           offerDetails: options?.offerDetails || '',
+          originalPrice: options?.originalPrice || '',
         }),
       });
     } catch (err) {
