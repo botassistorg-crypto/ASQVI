@@ -11,10 +11,10 @@ interface OffersPanelProps {
   products: Product[];
   thankYouConfig: ThankYouConfig;
   currency: string;
-  onAddOffer: (offer: Omit<Offer, 'id'>) => Offer | null;
-  onUpdateOffer: (offerId: string, updates: Partial<Offer>) => boolean;
-  onDeleteOffer: (offerId: string) => boolean;
-  onSaveThankYou: (config: ThankYouConfig) => boolean;
+  onAddOffer: (offer: Omit<Offer, 'id'>) => Promise<Offer | null>;
+  onUpdateOffer: (offerId: string, updates: Partial<Offer>) => Promise<boolean>;
+  onDeleteOffer: (offerId: string) => Promise<boolean>;
+  onSaveThankYou: (config: ThankYouConfig) => Promise<boolean>;
 }
 
 const defaultOffer: Omit<Offer, 'id'> = {
@@ -64,11 +64,10 @@ export default function OffersPanel({
   const saveOffer = async () => {
     if (!offerForm.name) return;
     setOfferSaving(true);
-    await new Promise(r => setTimeout(r, 300));
-    if (editingOffer) onUpdateOffer(editingOffer.id, offerForm); else onAddOffer(offerForm);
+    if (editingOffer) await onUpdateOffer(editingOffer.id, offerForm); else await onAddOffer(offerForm);
     setOfferSaving(false); setIsOfferModal(false);
   };
-  const deleteOfferConfirmed = (id: string) => { onDeleteOffer(id); setDeleteConfirm(null); };
+  const deleteOfferConfirmed = async (id: string) => { await onDeleteOffer(id); setDeleteConfirm(null); };
   const toggleOfferProduct = (id: string, field: 'productIds' | 'bundleProductIds') => {
     const c = (offerForm[field] as string[]) || [];
     setOfferForm(p => ({ ...p, [field]: c.includes(id) ? c.filter(x => x !== id) : [...c, id] }));
@@ -92,11 +91,11 @@ export default function OffersPanel({
     } else {
       rules.push({ id: `tyr-${Date.now()}`, ...ruleForm });
     }
-    onSaveThankYou({ ...thankYouConfig, rules });
+    await onSaveThankYou({ ...thankYouConfig, rules });
     setRuleSaving(false); setIsRuleModal(false);
   };
-  const deleteRuleConfirmed = (id: string) => {
-    onSaveThankYou({ ...thankYouConfig, rules: thankYouConfig.rules.filter(r => r.id !== id) });
+  const deleteRuleConfirmed = async (id: string) => {
+    await onSaveThankYou({ ...thankYouConfig, rules: thankYouConfig.rules.filter(r => r.id !== id) });
     setDeleteRuleConfirm(null);
   };
   const toggleRuleTrigger = (id: string) => {
@@ -109,8 +108,7 @@ export default function OffersPanel({
   };
   const saveDefaults = async () => {
     setDefSaving(true);
-    await new Promise(r => setTimeout(r, 300));
-    onSaveThankYou({ ...thankYouConfig, defaultHeading: defHeading, defaultMessage: defMessage });
+    await onSaveThankYou({ ...thankYouConfig, defaultHeading: defHeading, defaultMessage: defMessage });
     setDefSaving(false); setDefSaved(true); setTimeout(() => setDefSaved(false), 2000);
   };
 
