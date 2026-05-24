@@ -57,8 +57,10 @@ export interface Offer {
   discountPercent?: number;        // e.g. 20 for 20% off
   discountFlat?: number;           // e.g. 500 for ৳500 off
   bundleProductIds?: string[];     // Products included in bundle
-  bundlePrice?: number;            // Bundle price (overrides individual prices)
+  bundlePrice?: number;            // Bundle sale price
+  bundleOriginalPrice?: number;    // Original total before bundle discount
   badge?: string;                  // Badge text shown on product e.g. "20% OFF"
+  bundleDescription?: string;      // Short description for the bundle card
 }
 
 export interface ThankYouRule {
