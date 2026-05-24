@@ -399,13 +399,17 @@ async function syncConfigToSheet(): Promise<void> {
   }
 }
 
-/** Load offers + thankyou from Sheet on app start */
+/** Load offers + thankyou from Sheet on app start — PUBLIC, no auth needed */
 export async function fetchConfigFromSheet(): Promise<{ offers: Offer[]; thankYou: ThankYouConfig }> {
   if (!isScriptConfigured()) {
     return { offers: getOffers(), thankYou: getThankYouConfig() };
   }
   try {
-    const result = await scriptPost({ action: 'getSiteConfig', passcode: getStoredPasscode() });
+    // Use GET — no auth needed, this is public config
+    const url = APPS_SCRIPT_URL + '?action=getSiteConfig';
+    const response = await fetch(url);
+    const text = await response.text();
+    const result = JSON.parse(text);
     if (result.success) {
       let offers: Offer[] = [];
       let thankYou: ThankYouConfig = defaultThankYou;
