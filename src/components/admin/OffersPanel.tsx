@@ -19,7 +19,8 @@ interface OffersPanelProps {
 
 const defaultOffer: Omit<Offer, 'id'> = {
   name: '', type: 'discount', active: true, productIds: [],
-  discountPercent: 0, discountFlat: 0, bundleProductIds: [], bundlePrice: 0, badge: '',
+  discountPercent: 0, discountFlat: 0, bundleProductIds: [], bundlePrice: 0,
+  bundleOriginalPrice: 0, badge: '', bundleDescription: '',
 };
 
 const defaultRule: Omit<ThankYouRule, 'id'> = {
@@ -60,7 +61,7 @@ export default function OffersPanel({
 
   // --- OFFER HANDLERS ---
   const openAddOffer = () => { setEditingOffer(null); setOfferForm(defaultOffer); setIsOfferModal(true); };
-  const openEditOffer = (o: Offer) => { setEditingOffer(o); setOfferForm({ name: o.name, type: o.type, active: o.active, productIds: o.productIds, discountPercent: o.discountPercent, discountFlat: o.discountFlat, bundleProductIds: o.bundleProductIds, bundlePrice: o.bundlePrice, badge: o.badge }); setIsOfferModal(true); };
+  const openEditOffer = (o: Offer) => { setEditingOffer(o); setOfferForm({ name: o.name, type: o.type, active: o.active, productIds: o.productIds, discountPercent: o.discountPercent, discountFlat: o.discountFlat, bundleProductIds: o.bundleProductIds, bundlePrice: o.bundlePrice, bundleOriginalPrice: o.bundleOriginalPrice, badge: o.badge, bundleDescription: o.bundleDescription }); setIsOfferModal(true); };
   const saveOffer = async () => {
     if (!offerForm.name) return;
     setOfferSaving(true);
@@ -179,7 +180,15 @@ export default function OffersPanel({
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">Flat ({cs})</label><input type="number" min="0" value={offerForm.discountFlat || ''} onChange={e => setOfferForm(p => ({ ...p, discountFlat: Number(e.target.value) }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]" /></div>
                 </div>
               )}
-              {offerForm.type === 'bundle' && <div><label className="block text-sm font-medium text-gray-700 mb-1">Bundle Price ({cs})</label><input type="number" min="0" value={offerForm.bundlePrice || ''} onChange={e => setOfferForm(p => ({ ...p, bundlePrice: Number(e.target.value) }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]" /></div>}
+              {offerForm.type === 'bundle' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium text-gray-700 mb-1">Original Total ({cs})</label><input type="number" min="0" value={offerForm.bundleOriginalPrice || ''} onChange={e => setOfferForm(p => ({ ...p, bundleOriginalPrice: Number(e.target.value) }))} placeholder="Total if bought separately" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]" /></div>
+                    <div><label className="block text-sm font-medium text-gray-700 mb-1">Bundle Price ({cs}) *</label><input type="number" min="0" value={offerForm.bundlePrice || ''} onChange={e => setOfferForm(p => ({ ...p, bundlePrice: Number(e.target.value) }))} placeholder="Discounted bundle price" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]" /></div>
+                  </div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Bundle Description</label><input value={offerForm.bundleDescription || ''} onChange={e => setOfferForm(p => ({ ...p, bundleDescription: e.target.value }))} placeholder="e.g., 3 bestselling eBooks in one pack" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]" /></div>
+                </div>
+              )}
               <div><label className="block text-sm font-medium text-gray-700 mb-2">Apply to Products</label><ProductGrid selected={offerForm.productIds} onToggle={id => toggleOfferProduct(id, 'productIds')} /></div>
               {offerForm.type === 'bundle' && <div><label className="block text-sm font-medium text-gray-700 mb-2">Bundle Includes</label><ProductGrid selected={offerForm.bundleProductIds || []} onToggle={id => toggleOfferProduct(id, 'bundleProductIds')} /></div>}
               <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={offerForm.active} onChange={e => setOfferForm(p => ({ ...p, active: e.target.checked }))} className="w-5 h-5 rounded border-gray-300 text-[#4A5D4E]" /><span className="text-sm">Active</span></label>
