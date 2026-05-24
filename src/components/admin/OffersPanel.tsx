@@ -18,7 +18,7 @@ interface OffersPanelProps {
 }
 
 const defaultOffer: Omit<Offer, 'id'> = {
-  name: '', type: 'discount', active: true, productIds: [],
+  name: '', type: 'discount', active: true, category: '', productIds: [],
   discountPercent: 0, discountFlat: 0, bundleProductIds: [], bundlePrice: 0,
   bundleOriginalPrice: 0, badge: '', bundleDescription: '',
 };
@@ -61,7 +61,7 @@ export default function OffersPanel({
 
   // --- OFFER HANDLERS ---
   const openAddOffer = () => { setEditingOffer(null); setOfferForm(defaultOffer); setIsOfferModal(true); };
-  const openEditOffer = (o: Offer) => { setEditingOffer(o); setOfferForm({ name: o.name, type: o.type, active: o.active, productIds: o.productIds, discountPercent: o.discountPercent, discountFlat: o.discountFlat, bundleProductIds: o.bundleProductIds, bundlePrice: o.bundlePrice, bundleOriginalPrice: o.bundleOriginalPrice, badge: o.badge, bundleDescription: o.bundleDescription }); setIsOfferModal(true); };
+  const openEditOffer = (o: Offer) => { setEditingOffer(o); setOfferForm({ name: o.name, type: o.type, active: o.active, category: o.category || '', productIds: o.productIds, discountPercent: o.discountPercent, discountFlat: o.discountFlat, bundleProductIds: o.bundleProductIds, bundlePrice: o.bundlePrice, bundleOriginalPrice: o.bundleOriginalPrice, badge: o.badge, bundleDescription: o.bundleDescription }); setIsOfferModal(true); };
   const saveOffer = async () => {
     if (!offerForm.name) return;
     setOfferSaving(true);
@@ -157,7 +157,7 @@ export default function OffersPanel({
               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${typeColors[o.type]}`}>{typeLabels[o.type]}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900 truncate">{o.name}</p>
-                <p className="text-xs text-gray-500">{o.productIds.length} product(s){o.discountPercent ? ` • ${o.discountPercent}% off` : ''}{o.bundlePrice ? ` • Bundle: ${cs}${o.bundlePrice}` : ''}</p>
+                <p className="text-xs text-gray-500">{o.category ? `📁 ${o.category} • ` : ''}{o.productIds.length} product(s){o.discountPercent ? ` • ${o.discountPercent}% off` : ''}{o.bundlePrice ? ` • Bundle: ${cs}${o.bundlePrice}` : ''}</p>
               </div>
               <span className={`text-xs font-medium ${o.active ? 'text-green-600' : 'text-gray-400'}`}>{o.active ? 'Active' : 'Off'}</span>
               <button onClick={() => openEditOffer(o)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-[#4A5D4E]"><Pencil className="w-4 h-4" /></button>
@@ -170,8 +170,9 @@ export default function OffersPanel({
           <Modal isOpen={isOfferModal} onClose={() => setIsOfferModal(false)} title={editingOffer ? 'Edit Offer' : 'Create Offer'} maxWidth="max-w-2xl">
             <div className="space-y-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Name *</label><input value={offerForm.name} onChange={e => setOfferForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g., Summer Sale" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]" /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Type</label><select value={offerForm.type} onChange={e => setOfferForm(p => ({ ...p, type: e.target.value as any }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"><option value="discount">Discount</option><option value="bundle">Bundle</option><option value="upsell">Upsell</option><option value="freebie">Freebie</option></select></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Category</label><select value={offerForm.category || ''} onChange={e => setOfferForm(p => ({ ...p, category: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]"><option value="">No Category</option>{Array.from(new Set(products.map(p => p.category))).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Badge</label><input value={offerForm.badge || ''} onChange={e => setOfferForm(p => ({ ...p, badge: e.target.value }))} placeholder="30% OFF" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A5D4E]" /></div>
               </div>
               {(offerForm.type === 'discount' || offerForm.type === 'upsell') && (
