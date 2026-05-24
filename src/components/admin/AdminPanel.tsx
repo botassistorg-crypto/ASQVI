@@ -25,10 +25,10 @@ interface AdminPanelProps {
   onAddCategory: (category: Omit<Category, 'id'>) => Category | null;
   onUpdateCategory: (categoryId: string, updates: Partial<Category>) => boolean;
   onDeleteCategory: (categoryId: string) => boolean;
-  onAddOffer: (offer: Omit<Offer, 'id'>) => Offer | null;
-  onUpdateOffer: (offerId: string, updates: Partial<Offer>) => boolean;
-  onDeleteOffer: (offerId: string) => boolean;
-  onSaveThankYou: (config: ThankYouConfig) => boolean;
+  onAddOffer: (offer: Omit<Offer, 'id'>) => Promise<Offer | null>;
+  onUpdateOffer: (offerId: string, updates: Partial<Offer>) => Promise<boolean>;
+  onDeleteOffer: (offerId: string) => Promise<boolean>;
+  onSaveThankYou: (config: ThankYouConfig) => Promise<boolean>;
   onSaveSettings: (settings: SiteSettings) => boolean;
   onLogout: () => void;
 }
