@@ -18,7 +18,7 @@ import {
   getProductsLocal, getProductCategories,
   getCategories, addCategory, updateCategory, deleteCategory,
   getOffers, addOffer, updateOffer, deleteOffer,
-  getThankYouConfig, saveThankYouConfig,
+  getThankYouConfig, saveThankYouConfig, fetchConfigFromSheet,
   getSettings, saveSettings, verifyPasscode,
   isAuthenticated, setAuthenticated,
   getStoredPasscode, setStoredPasscode,
@@ -36,7 +36,7 @@ export default function App() {
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [isUpsellPurchase, setIsUpsellPurchase] = useState(false);
-  const [upsellOriginalPrice, setUpsellOriginalPrice] = useState<number>(0);
+  const [upsellOriginalPrice, setUpsellOriginalPrice] = useState(0);
   const [showThankYou, setShowThankYou] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [lastCustomer, setLastCustomer] = useState<CustomerData | null>(null);
@@ -49,16 +49,23 @@ export default function App() {
   const [settings, setSettings] = useState<SiteSettings>(getSettings());
   const [loadingProducts, setLoadingProducts] = useState(false);
 
-  // Track page views
   useEffect(() => { trackPageView(view); }, [view]);
 
-  // Load products
+  // Load products from Sheet
   useEffect(() => {
     const cached = getProductsLocal();
     if (cached.length > 0) setProducts(cached); else setLoadingProducts(true);
     fetchProductsFromSheet()
       .then(f => { setProducts(f); setLoadingProducts(false); })
       .catch(() => setLoadingProducts(false));
+  }, []);
+
+  // Load offers + thankyou from Sheet
+  useEffect(() => {
+    fetchConfigFromSheet().then(({ offers: o, thankYou: t }) => {
+      setOffers(o);
+      setThankYouConfig(t);
+    });
   }, []);
 
   useEffect(() => { setProductCategories(getProductCategories()); }, [products]);
@@ -68,7 +75,6 @@ export default function App() {
   const relatedProducts = selectedProduct?.relatedProducts
     ? products.filter(p => selectedProduct.relatedProducts?.includes(p.id)) : [];
 
-  // Find the purchased product to match thank-you rule
   const purchasedProduct = lastOrder ? products.find(p => p.name === lastOrder.product) : null;
   const matchedRule = purchasedProduct
     ? thankYouConfig.rules.find(r => r.active && r.triggerProductIds.includes(purchasedProduct.id)) || null
@@ -77,7 +83,7 @@ export default function App() {
     ? matchedRule.upsellProductIds.map(id => products.find(p => p.id === id)).filter(Boolean) as Product[]
     : [];
 
-  // --- STOREFRONT HANDLERS ---
+  // --- STOREFRONT ---
 
   const handleBuy = (product: Product) => {
     setCheckoutProduct(product);
@@ -99,36 +105,23 @@ export default function App() {
   const handleCheckoutSubmit = async (data: CustomerData) => {
     if (!checkoutProduct) return;
     try {
-      // Save customer details for upsell auto-fill
       setLastCustomer(data);
-
-      // Build offer details for sheet
       let offerDetails = '';
       let originalPrice: number | undefined;
-
-      // checkoutProduct.price already has the discounted price for upsells
-      // (set in handleBuyUpsell), upsellOriginalPrice has the original
       if (isUpsellPurchase && matchedRule) {
         originalPrice = upsellOriginalPrice;
-        if (matchedRule.upsellDiscount) {
-          offerDetails = `${matchedRule.upsellDiscount}% OFF via "${matchedRule.name}"`;
-        } else {
-          offerDetails = `Upsell via "${matchedRule.name}"`;
-        }
+        if (matchedRule.upsellDiscount) offerDetails = `${matchedRule.upsellDiscount}% OFF via "${matchedRule.name}"`;
+        else offerDetails = `Upsell via "${matchedRule.name}"`;
       }
-
       const order = await addOrder(
         { name: data.name, whatsapp: data.whatsapp, email: data.email,
           senderBkash: data.senderBkash, product: checkoutProduct.name, price: checkoutProduct.price },
         { orderType: isUpsellPurchase ? 'upsell' : 'direct', offerDetails, originalPrice }
       );
-
       setOrders(getOrders());
       setLastOrder(order);
       setCheckoutOpen(false);
       trackPurchase({ id: order.id, product: order.product, price: order.price });
-
-      // Show thank you popup
       setShowThankYou(true);
     } catch (err) {
       console.error('Order error:', err);
@@ -138,28 +131,19 @@ export default function App() {
 
   const handleBuyUpsell = (product: Product) => {
     setShowThankYou(false);
-
-    // Calculate discounted price and create a product copy with that price
-    const originalPrice = product.price;
-    let discountedPrice = originalPrice;
-    if (matchedRule?.upsellDiscount) {
-      discountedPrice = Math.round(originalPrice * (1 - matchedRule.upsellDiscount / 100));
-    }
-
-    // Set the product with discounted price for checkout display
-    setCheckoutProduct({ ...product, price: discountedPrice });
-    setUpsellOriginalPrice(originalPrice);
+    const orig = product.price;
+    let discounted = orig;
+    if (matchedRule?.upsellDiscount) discounted = Math.round(orig * (1 - matchedRule.upsellDiscount / 100));
+    setCheckoutProduct({ ...product, price: discounted });
+    setUpsellOriginalPrice(orig);
     setCheckoutOpen(true);
     setIsUpsellPurchase(true);
-    trackInitiateCheckout({ id: product.id, name: product.name, price: discountedPrice });
+    trackInitiateCheckout({ id: product.id, name: product.name, price: discounted });
   };
 
-  const handleCloseThankYou = () => {
-    setShowThankYou(false);
-    setIsUpsellPurchase(false);
-  };
+  const handleCloseThankYou = () => { setShowThankYou(false); setIsUpsellPurchase(false); };
 
-  // --- ADMIN HANDLERS ---
+  // --- ADMIN ---
 
   const handleAdminLogin = useCallback(async (code: string): Promise<boolean> => {
     try {
@@ -173,7 +157,7 @@ export default function App() {
     const ok = updateOrderStatus(id, s); if (ok) { setOrders(getOrders()); toast.success(`Order → ${s}`, { icon: s === 'Sent' ? '📦' : '✅' }); } return ok;
   }, []);
   const handleDeleteOrder = useCallback((id: string): boolean => {
-    const ok = deleteOrder(id); if (ok) { setOrders(getOrders()); toast.success('Deleted'); } return ok;
+    const ok = deleteOrder(id); if (ok) { setOrders(getOrders()); toast.success('Order deleted'); } return ok;
   }, []);
   const handleAddProduct = useCallback(async (d: Omit<Product, 'id'>): Promise<Product | null> => {
     const p = await addProductToSheet(d); if (p) { setProducts(getProductsLocal()); toast.success('Added', { icon: '🛍️' }); } return p;
@@ -193,35 +177,32 @@ export default function App() {
   const handleDeleteCategory = useCallback((id: string): boolean => {
     const s = deleteCategory(id); if (s) setCategories(getCategories()); return s;
   }, []);
-  const handleAddOffer = useCallback((d: Omit<Offer, 'id'>): Offer | null => {
-    const o = addOffer(d); if (o) { setOffers(getOffers()); toast.success('Offer created', { icon: '🎁' }); } return o;
+
+  // Offer handlers — async now (syncs to Sheet)
+  const handleAddOffer = useCallback(async (d: Omit<Offer, 'id'>): Promise<Offer | null> => {
+    const o = await addOffer(d); if (o) { setOffers(getOffers()); toast.success('Offer created', { icon: '🎁' }); } return o;
   }, []);
-  const handleUpdateOffer = useCallback((id: string, u: Partial<Offer>): boolean => {
-    const s = updateOffer(id, u); if (s) { setOffers(getOffers()); toast.success('Updated'); } return s;
+  const handleUpdateOffer = useCallback(async (id: string, u: Partial<Offer>): Promise<boolean> => {
+    const s = await updateOffer(id, u); if (s) { setOffers(getOffers()); toast.success('Updated'); } return s;
   }, []);
-  const handleDeleteOffer = useCallback((id: string): boolean => {
-    const s = deleteOffer(id); if (s) { setOffers(getOffers()); toast.success('Deleted'); } return s;
+  const handleDeleteOffer = useCallback(async (id: string): Promise<boolean> => {
+    const s = await deleteOffer(id); if (s) { setOffers(getOffers()); toast.success('Deleted'); } return s;
   }, []);
-  const handleSaveThankYou = useCallback((c: ThankYouConfig): boolean => {
-    const s = saveThankYouConfig(c); if (s) { setThankYouConfig(c); toast.success('Saved', { icon: '🎉' }); } return s;
+  const handleSaveThankYou = useCallback(async (c: ThankYouConfig): Promise<boolean> => {
+    const s = await saveThankYouConfig(c); if (s) { setThankYouConfig(c); toast.success('Saved', { icon: '🎉' }); } return s;
   }, []);
+
   const handleSaveSettings = useCallback((s: SiteSettings): boolean => {
     const ok = saveSettings(s); if (ok) { setSettings(s); toast.success('Saved', { icon: '⚙️' }); } return ok;
   }, []);
   const handleLogout = () => { setAuthenticated(false); setStoredPasscode(''); setView('store'); };
 
-  const toastOpts = {
-    className: '!rounded-2xl !shadow-xl !border !border-soft-neutral !text-sm !font-medium !bg-natural-white',
-    style: { fontFamily: 'Inter, sans-serif' },
-  };
-
+  const toastOpts = { className: '!rounded-2xl !shadow-xl !border !border-soft-neutral !text-sm !font-medium !bg-natural-white', style: { fontFamily: 'Inter, sans-serif' } };
   const navAction = () => { if (isAuthenticated() && getStoredPasscode()) setView('admin-panel'); else setView('admin-login'); };
 
   // --- VIEWS ---
 
-  if (view === 'admin-login') return (
-    <><Toaster position="top-right" toastOptions={toastOpts} /><AdminLogin onLogin={handleAdminLogin} onBack={() => setView('store')} /></>
-  );
+  if (view === 'admin-login') return (<><Toaster position="top-right" toastOptions={toastOpts} /><AdminLogin onLogin={handleAdminLogin} onBack={() => setView('store')} /></>);
 
   if (view === 'admin-panel') return (
     <><Toaster position="top-right" toastOptions={toastOpts} />
@@ -240,21 +221,14 @@ export default function App() {
       <Navbar onAdminClick={navAction} storeName={settings.storeName} />
       <ProductPage product={selectedProduct} relatedProducts={relatedProducts} currency={settings.currency} onBuy={handleBuy} onBack={handleBackToStore} onViewProduct={handleViewProduct} />
       <CheckoutModal isOpen={checkoutOpen} onClose={() => setCheckoutOpen(false)} product={checkoutProduct}
-        bkashNumber={settings.bkashNumber} currency={settings.currency}
-        previousCustomer={lastCustomer} isUpsell={isUpsellPurchase}
-        onSubmit={handleCheckoutSubmit} />
-      {showThankYou && lastOrder && (
-        <ThankYouPage order={lastOrder}
-          heading={matchedRule?.heading || thankYouConfig.defaultHeading}
-          message={matchedRule?.message || thankYouConfig.defaultMessage}
-          rule={matchedRule} upsellProducts={upsellProducts}
-          currency={settings.currency} onBuyUpsell={handleBuyUpsell} onClose={handleCloseThankYou} />
-      )}
+        bkashNumber={settings.bkashNumber} currency={settings.currency} previousCustomer={lastCustomer} isUpsell={isUpsellPurchase} onSubmit={handleCheckoutSubmit} />
+      {showThankYou && lastOrder && <ThankYouPage order={lastOrder} heading={matchedRule?.heading || thankYouConfig.defaultHeading}
+        message={matchedRule?.message || thankYouConfig.defaultMessage} rule={matchedRule} upsellProducts={upsellProducts}
+        currency={settings.currency} onBuyUpsell={handleBuyUpsell} onClose={handleCloseThankYou} />}
       <Footer storeName={settings.storeName} bkashNumber={settings.bkashNumber} />
     </>
   );
 
-  // Storefront
   return (
     <div className="min-h-screen bg-natural-white">
       <Toaster position="top-right" toastOptions={toastOpts} />
@@ -262,7 +236,6 @@ export default function App() {
       <Hero settings={settings} />
       <AboutSection settings={settings} />
       {!loadingProducts && <FeaturedProducts products={products} onBuy={handleBuy} onViewProduct={handleViewProduct} currency={settings.currency} />}
-
       <section id="shop" className="py-14 sm:py-20 bg-soft-neutral">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-8">
@@ -278,7 +251,7 @@ export default function App() {
             ))}
           </div>
           {loadingProducts ? (
-            <div className="text-center py-16"><Loader2 className="w-8 h-8 text-forest-green mx-auto mb-3 animate-spin" /><p className="text-sm text-text-muted">Loading...</p></div>
+            <div className="text-center py-16"><Loader2 className="w-8 h-8 text-forest-green mx-auto mb-3 animate-spin" /></div>
           ) : filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map(p => <ProductCard key={p.id} product={p} index={0} onBuy={handleBuy} onViewProduct={handleViewProduct} currency={settings.currency} />)}
@@ -288,20 +261,11 @@ export default function App() {
           )}
         </div>
       </section>
-
       <CheckoutModal isOpen={checkoutOpen} onClose={() => setCheckoutOpen(false)} product={checkoutProduct}
-        bkashNumber={settings.bkashNumber} currency={settings.currency}
-        previousCustomer={lastCustomer} isUpsell={isUpsellPurchase}
-        onSubmit={handleCheckoutSubmit} />
-
-      {showThankYou && lastOrder && (
-        <ThankYouPage order={lastOrder}
-          heading={matchedRule?.heading || thankYouConfig.defaultHeading}
-          message={matchedRule?.message || thankYouConfig.defaultMessage}
-          rule={matchedRule} upsellProducts={upsellProducts}
-          currency={settings.currency} onBuyUpsell={handleBuyUpsell} onClose={handleCloseThankYou} />
-      )}
-
+        bkashNumber={settings.bkashNumber} currency={settings.currency} previousCustomer={lastCustomer} isUpsell={isUpsellPurchase} onSubmit={handleCheckoutSubmit} />
+      {showThankYou && lastOrder && <ThankYouPage order={lastOrder} heading={matchedRule?.heading || thankYouConfig.defaultHeading}
+        message={matchedRule?.message || thankYouConfig.defaultMessage} rule={matchedRule} upsellProducts={upsellProducts}
+        currency={settings.currency} onBuyUpsell={handleBuyUpsell} onClose={handleCloseThankYou} />}
       <Footer storeName={settings.storeName} bkashNumber={settings.bkashNumber} />
     </div>
   );
