@@ -69,7 +69,8 @@ export default function App() {
   const purchasedProduct = lastOrder ? products.find(p => p.name === lastOrder.product) : null;
   const matchedRule = purchasedProduct ? thankYouConfig.rules.find(r => r.active && r.triggerProductIds.includes(purchasedProduct.id)) || null : null;
   const upsellProducts = matchedRule ? matchedRule.upsellProductIds.map(id => products.find(p => p.id === id)).filter(Boolean) as Product[] : [];
-  const getOffer = (pid: string) => offers.find(o => o.active && o.productIds.includes(pid) && (o.type === 'discount' || o.type === 'freebie'));
+  // ONLY discount offers affect product prices — NOT bundles, NOT upsells
+  const getOffer = (pid: string) => offers.find(o => o.active && o.type === 'discount' && o.productIds.includes(pid));
   const selectedProductOffer = selectedProduct ? getOffer(selectedProduct.id) : undefined;
 
   // Group products by category (max 3 per category for homepage)
