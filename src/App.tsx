@@ -78,8 +78,8 @@ export default function App() {
     products: products.filter(p => p.category === cat),
   })).filter(c => c.products.length > 0);
 
-  // Category page products
-  const categoryPageProducts = categoryPageName ? products.filter(p => p.category === categoryPageName) : [];
+  // Category page products — "All" means ALL products
+  const categoryPageProducts = categoryPageName === 'All' ? products : categoryPageName ? products.filter(p => p.category === categoryPageName) : [];
 
   // --- HANDLERS ---
   const handleBuy = (product: Product, offer?: Offer) => {
@@ -176,33 +176,74 @@ export default function App() {
   );
 
   // Category Page
-  if (view === 'category' && categoryPageName) return (
-    <><Toaster position="top-right" toastOptions={to} />
-      <Navbar onAdminClick={nav} onCollectionClick={() => setShowCategoryPopup(true)} storeName={settings.storeName} />
-      <section className="py-14 bg-natural-white min-h-screen">
-        <div className="max-w-6xl mx-auto px-6">
-          <button onClick={handleBackToStore} className="flex items-center gap-2 text-text-muted hover:text-forest-green text-sm font-medium uppercase tracking-wider mb-8 transition-colors">
-            ← Back
-          </button>
-          <div className="text-center mb-10">
-            <p className="text-[10px] font-semibold text-forest-green uppercase tracking-wider mb-2">Collection</p>
-            <h1 className="font-display text-3xl sm:text-4xl font-semibold text-text-primary">{categoryPageName}</h1>
-            <p className="text-sm text-text-muted mt-2">{categoryPageProducts.length} product{categoryPageProducts.length !== 1 ? 's' : ''}</p>
-          </div>
-          {categoryPageProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {categoryPageProducts.map(p => <ProductCard key={p.id} product={p} index={0} onBuy={handleBuy} onViewProduct={handleViewProduct} currency={settings.currency} offer={getOffer(p.id)} />)}
+  if (view === 'category' && categoryPageName) {
+    const isAllProducts = categoryPageName === 'All';
+    const pageTitle = isAllProducts ? 'All Products' : categoryPageName;
+    const allCatsGrouped = categoriesWithProducts;
+    // Bundles assigned to this category
+    const categoryBundles = isAllProducts
+      ? activeBundles
+      : offers.filter(o => o.active && o.type === 'bundle' && o.category === categoryPageName).slice(0, 3);
+
+    return (
+      <><Toaster position="top-right" toastOptions={to} />
+        <Navbar onAdminClick={nav} onCollectionClick={() => setShowCategoryPopup(true)} storeName={settings.storeName} />
+        <section className="py-14 bg-natural-white min-h-screen">
+          <div className="max-w-6xl mx-auto px-6">
+            <button onClick={handleBackToStore} className="flex items-center gap-2 text-text-muted hover:text-forest-green text-sm font-medium uppercase tracking-wider mb-8 transition-colors">
+              ← Back
+            </button>
+            <div className="text-center mb-10">
+              <p className="text-[10px] font-semibold text-forest-green uppercase tracking-wider mb-2">Collection</p>
+              <h1 className="font-display text-3xl sm:text-4xl font-semibold text-text-primary">{pageTitle}</h1>
+              <p className="text-sm text-text-muted mt-2">{categoryPageProducts.length} product{categoryPageProducts.length !== 1 ? 's' : ''}</p>
             </div>
-          ) : (
-            <div className="text-center py-16"><Package className="w-12 h-12 text-warm-gray mx-auto mb-3" /><p className="text-sm text-text-muted">No products in this category</p></div>
-          )}
-        </div>
-      </section>
-      {checkoutEl}{thankYouEl}
-      <CategoryPopup isOpen={showCategoryPopup} onClose={() => setShowCategoryPopup(false)} categories={productCategories} onSelectCategory={handleViewCategory} />
-      <Footer storeName={settings.storeName} bkashNumber={settings.bkashNumber} />
-    </>
-  );
+
+            {/* Category Bundles */}
+            {categoryBundles.length > 0 && (
+              <div className="mb-10">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 mb-2"><Gift className="w-3.5 h-3.5" /><span className="text-xs font-semibold uppercase tracking-wider">Bundles</span></div>
+                </div>
+                <div className={`grid gap-4 max-w-4xl mx-auto ${categoryBundles.length === 1 ? 'grid-cols-1 max-w-md' : categoryBundles.length === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+                  {categoryBundles.map(b => <BundleCard key={b.id} offer={b} products={products} currency={settings.currency} onBuy={handleBuyBundle} />)}
+                </div>
+              </div>
+            )}
+
+            {isAllProducts ? (
+              <div className="space-y-12">
+                {allCatsGrouped.map(({ name, products: catProds }) => (
+                  <div key={name}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-display text-xl font-semibold text-text-primary">{name}</h3>
+                      {catProds.length > 3 && (
+                        <button onClick={() => handleViewCategory(name)} className="flex items-center gap-1 text-xs font-medium text-forest-green uppercase tracking-wider hover:gap-2 transition-all">
+                          See All ({catProds.length}) <ArrowRight className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {catProds.slice(0, 3).map(p => <ProductCard key={p.id} product={p} index={0} onBuy={handleBuy} onViewProduct={handleViewProduct} currency={settings.currency} offer={getOffer(p.id)} />)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : categoryPageProducts.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {categoryPageProducts.map(p => <ProductCard key={p.id} product={p} index={0} onBuy={handleBuy} onViewProduct={handleViewProduct} currency={settings.currency} offer={getOffer(p.id)} />)}
+              </div>
+            ) : (
+              <div className="text-center py-16"><Package className="w-12 h-12 text-warm-gray mx-auto mb-3" /><p className="text-sm text-text-muted">No products in this category</p></div>
+            )}
+          </div>
+        </section>
+        {checkoutEl}{thankYouEl}
+        <CategoryPopup isOpen={showCategoryPopup} onClose={() => setShowCategoryPopup(false)} categories={productCategories} onSelectCategory={handleViewCategory} />
+        <Footer storeName={settings.storeName} bkashNumber={settings.bkashNumber} />
+      </>
+    );
+  }
 
   // --- STOREFRONT ---
   return (
