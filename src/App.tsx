@@ -36,6 +36,7 @@ export default function App() {
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [isUpsellPurchase, setIsUpsellPurchase] = useState(false);
+  const [upsellOriginalPrice, setUpsellOriginalPrice] = useState<number>(0);
   const [showThankYou, setShowThankYou] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [lastCustomer, setLastCustomer] = useState<CustomerData | null>(null);
@@ -104,12 +105,12 @@ export default function App() {
       // Build offer details for sheet
       let offerDetails = '';
       let originalPrice: number | undefined;
-      let paidPrice = checkoutProduct.price;
 
+      // checkoutProduct.price already has the discounted price for upsells
+      // (set in handleBuyUpsell), upsellOriginalPrice has the original
       if (isUpsellPurchase && matchedRule) {
-        originalPrice = checkoutProduct.price;
+        originalPrice = upsellOriginalPrice;
         if (matchedRule.upsellDiscount) {
-          paidPrice = Math.round(checkoutProduct.price * (1 - matchedRule.upsellDiscount / 100));
           offerDetails = `${matchedRule.upsellDiscount}% OFF via "${matchedRule.name}"`;
         } else {
           offerDetails = `Upsell via "${matchedRule.name}"`;
@@ -118,7 +119,7 @@ export default function App() {
 
       const order = await addOrder(
         { name: data.name, whatsapp: data.whatsapp, email: data.email,
-          senderBkash: data.senderBkash, product: checkoutProduct.name, price: paidPrice },
+          senderBkash: data.senderBkash, product: checkoutProduct.name, price: checkoutProduct.price },
         { orderType: isUpsellPurchase ? 'upsell' : 'direct', offerDetails, originalPrice }
       );
 
@@ -136,11 +137,21 @@ export default function App() {
   };
 
   const handleBuyUpsell = (product: Product) => {
-    setShowThankYou(false); // Close thank you popup
-    setCheckoutProduct(product);
+    setShowThankYou(false);
+
+    // Calculate discounted price and create a product copy with that price
+    const originalPrice = product.price;
+    let discountedPrice = originalPrice;
+    if (matchedRule?.upsellDiscount) {
+      discountedPrice = Math.round(originalPrice * (1 - matchedRule.upsellDiscount / 100));
+    }
+
+    // Set the product with discounted price for checkout display
+    setCheckoutProduct({ ...product, price: discountedPrice });
+    setUpsellOriginalPrice(originalPrice);
     setCheckoutOpen(true);
     setIsUpsellPurchase(true);
-    trackInitiateCheckout({ id: product.id, name: product.name, price: product.price });
+    trackInitiateCheckout({ id: product.id, name: product.name, price: discountedPrice });
   };
 
   const handleCloseThankYou = () => {
