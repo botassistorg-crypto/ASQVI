@@ -31,16 +31,20 @@ const defaultCategories: Category[] = [
 
 const defaultOrders: Order[] = [];
 
+const defaultThankYou: ThankYouConfig = {
+  defaultHeading: 'Thank You for Your Purchase! 🎉',
+  defaultMessage: 'Your order has been received successfully.\n\nWe will verify your payment and send you the access details to your email shortly.\n\nThank you for choosing ASQVI!',
+  rules: [],
+};
+
 // ============ HELPERS ============
 
 function isLoggedIn(): boolean {
   return !!getStoredPasscode() && isAuthenticated();
 }
 
-/** Convert literal \n strings to actual newlines */
 function fixLineBreaks(text: string): string {
   if (!text) return '';
-  // Replace literal two-char \n with actual newline
   return text.replace(/\\n/g, '\n');
 }
 
@@ -55,61 +59,38 @@ async function scriptPost(data: any): Promise<any> {
 
 // ============ PRODUCTS — GOOGLE SHEET ============
 
-/**
- * Fetch products from Google Sheet.
- * Falls back to localStorage if Sheet is unavailable.
- */
 export async function fetchProductsFromSheet(): Promise<Product[]> {
-  if (!isScriptConfigured()) {
-    return getProductsLocal();
-  }
-
+  if (!isScriptConfigured()) return getProductsLocal();
   try {
     const url = APPS_SCRIPT_URL + '?action=getProducts';
     const response = await fetch(url);
     const text = await response.text();
     const result = JSON.parse(text);
-
     if (result.success && Array.isArray(result.products)) {
-      // Fix descriptions — Google Sheets may store \n as literal text
       const cleaned = result.products.map((p: any) => ({
         ...p,
         description: fixLineBreaks(p.description || ''),
         fullDescription: fixLineBreaks(p.fullDescription || ''),
       }));
-      // Cache in localStorage
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(cleaned));
       return cleaned;
     }
   } catch (err) {
-    console.error('Failed to fetch products from Sheet:', err);
+    console.error('Failed to fetch products:', err);
   }
-
-  // Fallback to cached
   return getProductsLocal();
 }
 
 export async function addProductToSheet(product: Omit<Product, 'id'>): Promise<Product | null> {
   if (!isLoggedIn()) return null;
-
   const id = 'prod-' + Date.now();
   const newProduct: Product = { ...product, id };
-
   if (isScriptConfigured()) {
     try {
-      const result = await scriptPost({
-        action: 'addProduct',
-        passcode: getStoredPasscode(),
-        ...newProduct,
-      });
+      const result = await scriptPost({ action: 'addProduct', passcode: getStoredPasscode(), ...newProduct });
       if (!result.success) return null;
-    } catch (err) {
-      console.error('Failed to add product to Sheet:', err);
-      return null;
-    }
+    } catch { return null; }
   }
-
-  // Also update local cache
   const products = getProductsLocal();
   products.unshift(newProduct);
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
@@ -118,57 +99,33 @@ export async function addProductToSheet(product: Omit<Product, 'id'>): Promise<P
 
 export async function updateProductOnSheet(productId: string, updates: Partial<Product>): Promise<boolean> {
   if (!isLoggedIn()) return false;
-
-  // Update local cache first
   const products = getProductsLocal();
   const idx = products.findIndex(p => p.id === productId);
   if (idx === -1) return false;
   const updated = { ...products[idx], ...updates };
   products[idx] = updated;
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
-
   if (isScriptConfigured()) {
     try {
-      const result = await scriptPost({
-        action: 'updateProduct',
-        passcode: getStoredPasscode(),
-        ...updated,
-      });
+      const result = await scriptPost({ action: 'updateProduct', passcode: getStoredPasscode(), ...updated });
       if (!result.success) return false;
-    } catch (err) {
-      console.error('Failed to update product on Sheet:', err);
-      return false;
-    }
+    } catch { return false; }
   }
-
   return true;
 }
 
 export async function deleteProductFromSheet(productId: string): Promise<boolean> {
   if (!isLoggedIn()) return false;
-
   if (isScriptConfigured()) {
     try {
-      const result = await scriptPost({
-        action: 'deleteProduct',
-        passcode: getStoredPasscode(),
-        id: productId,
-      });
+      const result = await scriptPost({ action: 'deleteProduct', passcode: getStoredPasscode(), id: productId });
       if (!result.success) return false;
-    } catch (err) {
-      console.error('Failed to delete product from Sheet:', err);
-      return false;
-    }
+    } catch { return false; }
   }
-
-  // Update local cache
   const products = getProductsLocal();
-  const filtered = products.filter(p => p.id !== productId);
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(filtered));
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products.filter(p => p.id !== productId)));
   return true;
 }
-
-// ============ PRODUCTS — LOCAL (cache/fallback) ============
 
 export function getProductsLocal(): Product[] {
   const stored = localStorage.getItem(PRODUCTS_KEY);
@@ -207,19 +164,14 @@ export async function addOrder(
   };
   orders.unshift(newOrder);
   saveOrders(orders);
-
   if (isScriptConfigured()) {
     try {
       await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({
           action: 'newOrder',
-          name: order.name,
-          number: order.whatsapp,
-          email: order.email,
-          product: order.product,
-          price: order.price,
-          senderBkash: order.senderBkash,
+          name: order.name, number: order.whatsapp, email: order.email,
+          product: order.product, price: order.price, senderBkash: order.senderBkash,
           orderType: options?.orderType || 'direct',
           offerDetails: options?.offerDetails || '',
           originalPrice: options?.originalPrice || '',
@@ -229,7 +181,6 @@ export async function addOrder(
       console.error('Sheet sync failed:', err);
     }
   }
-
   return newOrder;
 }
 
@@ -246,8 +197,7 @@ export function updateOrderStatus(orderId: string, status: Order['status']): boo
 export function deleteOrder(orderId: string): boolean {
   if (!isLoggedIn()) return false;
   const orders = getOrders();
-  const filtered = orders.filter(o => o.id !== orderId);
-  saveOrders(filtered);
+  saveOrders(orders.filter(o => o.id !== orderId));
   return true;
 }
 
@@ -286,8 +236,7 @@ export function updateCategory(categoryId: string, updates: Partial<Category>): 
 export function deleteCategory(categoryId: string): boolean {
   if (!isLoggedIn()) return false;
   const categories = getCategories();
-  const filtered = categories.filter(c => c.id !== categoryId);
-  saveCategories(filtered);
+  saveCategories(categories.filter(c => c.id !== categoryId));
   return true;
 }
 
@@ -297,10 +246,7 @@ export function getSettings(): SiteSettings {
   const stored = localStorage.getItem(SETTINGS_KEY);
   if (stored) {
     const parsed = JSON.parse(stored);
-    if ('scriptUrl' in parsed) {
-      delete parsed.scriptUrl;
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
-    }
+    if ('scriptUrl' in parsed) { delete parsed.scriptUrl; localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed)); }
     return parsed;
   }
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(defaultSettings));
@@ -316,19 +262,11 @@ export function saveSettings(settings: SiteSettings): boolean {
 // ============ AUTH ============
 
 export async function verifyPasscode(passcode: string): Promise<boolean> {
-  if (!isScriptConfigured()) {
-    return passcode === OFFLINE_OTP;
-  }
-
+  if (!isScriptConfigured()) return passcode === OFFLINE_OTP;
   try {
-    const result = await scriptPost({
-      action: 'verify',
-      passcode: passcode,
-    });
+    const result = await scriptPost({ action: 'verify', passcode });
     return result.success === true;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 export function isAuthenticated(): boolean {
@@ -336,11 +274,8 @@ export function isAuthenticated(): boolean {
 }
 
 export function setAuthenticated(value: boolean): void {
-  if (value) {
-    localStorage.setItem(AUTH_KEY, 'true');
-  } else {
-    localStorage.removeItem(AUTH_KEY);
-  }
+  if (value) localStorage.setItem(AUTH_KEY, 'true');
+  else localStorage.removeItem(AUTH_KEY);
 }
 
 export function getStoredPasscode(): string {
@@ -351,44 +286,57 @@ export function setStoredPasscode(passcode: string): void {
   localStorage.setItem('asqvi_passcode', passcode);
 }
 
-// ============ OFFERS ============
-
-const defaultOffers: Offer[] = [];
+// ============ OFFERS — SYNCED TO SHEET ============
 
 export function getOffers(): Offer[] {
   const stored = localStorage.getItem(OFFERS_KEY);
   if (stored) return JSON.parse(stored);
-  localStorage.setItem(OFFERS_KEY, JSON.stringify(defaultOffers));
-  return defaultOffers;
+  return [];
 }
 
-export function saveOffers(offers: Offer[]): void {
+function saveOffersLocal(offers: Offer[]): void {
   localStorage.setItem(OFFERS_KEY, JSON.stringify(offers));
 }
 
-export function addOffer(offer: Omit<Offer, 'id'>): Offer | null {
+export async function fetchOffersFromSheet(): Promise<Offer[]> {
+  if (!isScriptConfigured()) return getOffers();
+  try {
+    const result = await scriptPost({ action: 'getSiteConfig', passcode: getStoredPasscode() });
+    if (result.success && result.offers) {
+      const offers = JSON.parse(result.offers);
+      saveOffersLocal(offers);
+      return offers;
+    }
+  } catch { /* fallback */ }
+  return getOffers();
+}
+
+export async function addOffer(offer: Omit<Offer, 'id'>): Promise<Offer | null> {
   if (!isLoggedIn()) return null;
   const offers = getOffers();
   const newOffer: Offer = { ...offer, id: `offer-${Date.now()}` };
   offers.unshift(newOffer);
-  saveOffers(offers);
+  saveOffersLocal(offers);
+  await syncConfigToSheet();
   return newOffer;
 }
 
-export function updateOffer(offerId: string, updates: Partial<Offer>): boolean {
+export async function updateOffer(offerId: string, updates: Partial<Offer>): Promise<boolean> {
   if (!isLoggedIn()) return false;
   const offers = getOffers();
   const idx = offers.findIndex(o => o.id === offerId);
   if (idx === -1) return false;
   offers[idx] = { ...offers[idx], ...updates };
-  saveOffers(offers);
+  saveOffersLocal(offers);
+  await syncConfigToSheet();
   return true;
 }
 
-export function deleteOffer(offerId: string): boolean {
+export async function deleteOffer(offerId: string): Promise<boolean> {
   if (!isLoggedIn()) return false;
   const offers = getOffers();
-  saveOffers(offers.filter(o => o.id !== offerId));
+  saveOffersLocal(offers.filter(o => o.id !== offerId));
+  await syncConfigToSheet();
   return true;
 }
 
@@ -396,37 +344,79 @@ export function getActiveOfferForProduct(productId: string): Offer | undefined {
   return getOffers().find(o => o.active && o.productIds.includes(productId));
 }
 
-// ============ THANK YOU CONFIG ============
-
-const defaultThankYou: ThankYouConfig = {
-  defaultHeading: 'Thank You for Your Purchase! 🎉',
-  defaultMessage: 'Your order has been received successfully.\n\nWe will verify your payment and send you the access details to your email shortly.\n\nThank you for choosing ASQVI!',
-  rules: [],
-};
+// ============ THANK YOU CONFIG — SYNCED TO SHEET ============
 
 export function getThankYouConfig(): ThankYouConfig {
   const stored = localStorage.getItem(THANKYOU_KEY);
   if (stored) {
     const parsed = JSON.parse(stored);
-    // Migrate old format
-    if (!parsed.rules) {
-      return defaultThankYou;
-    }
+    if (!parsed.rules) return defaultThankYou;
     return parsed;
   }
-  localStorage.setItem(THANKYOU_KEY, JSON.stringify(defaultThankYou));
   return defaultThankYou;
 }
 
-export function saveThankYouConfig(config: ThankYouConfig): boolean {
+export async function fetchThankYouFromSheet(): Promise<ThankYouConfig> {
+  if (!isScriptConfigured()) return getThankYouConfig();
+  try {
+    const result = await scriptPost({ action: 'getSiteConfig', passcode: getStoredPasscode() });
+    if (result.success && result.thankYou) {
+      const config = JSON.parse(result.thankYou);
+      if (config.rules) {
+        localStorage.setItem(THANKYOU_KEY, JSON.stringify(config));
+        return config;
+      }
+    }
+  } catch { /* fallback */ }
+  return getThankYouConfig();
+}
+
+export async function saveThankYouConfig(config: ThankYouConfig): Promise<boolean> {
   if (!isLoggedIn()) return false;
   localStorage.setItem(THANKYOU_KEY, JSON.stringify(config));
+  await syncConfigToSheet();
   return true;
 }
 
-/** Find the matching thank-you rule for a purchased product */
 export function getThankYouRuleForProduct(productId: string): ThankYouRule | null {
   const config = getThankYouConfig();
-  const rule = config.rules.find(r => r.active && r.triggerProductIds.includes(productId));
-  return rule || null;
+  return config.rules.find(r => r.active && r.triggerProductIds.includes(productId)) || null;
+}
+
+// ============ SYNC CONFIG TO SHEET ============
+
+async function syncConfigToSheet(): Promise<void> {
+  if (!isScriptConfigured() || !isLoggedIn()) return;
+  try {
+    await scriptPost({
+      action: 'saveSiteConfig',
+      passcode: getStoredPasscode(),
+      offers: JSON.stringify(getOffers()),
+      thankYou: JSON.stringify(getThankYouConfig()),
+    });
+  } catch (err) {
+    console.error('Config sync failed:', err);
+  }
+}
+
+/** Load offers + thankyou from Sheet on app start */
+export async function fetchConfigFromSheet(): Promise<{ offers: Offer[]; thankYou: ThankYouConfig }> {
+  if (!isScriptConfigured()) {
+    return { offers: getOffers(), thankYou: getThankYouConfig() };
+  }
+  try {
+    const result = await scriptPost({ action: 'getSiteConfig', passcode: getStoredPasscode() });
+    if (result.success) {
+      let offers: Offer[] = [];
+      let thankYou: ThankYouConfig = defaultThankYou;
+      if (result.offers) {
+        try { offers = JSON.parse(result.offers); saveOffersLocal(offers); } catch { /* */ }
+      }
+      if (result.thankYou) {
+        try { thankYou = JSON.parse(result.thankYou); if (thankYou.rules) localStorage.setItem(THANKYOU_KEY, JSON.stringify(thankYou)); } catch { /* */ }
+      }
+      return { offers, thankYou };
+    }
+  } catch { /* fallback */ }
+  return { offers: getOffers(), thankYou: getThankYouConfig() };
 }
