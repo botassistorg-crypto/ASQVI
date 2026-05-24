@@ -103,16 +103,23 @@ export default function App() {
 
       // Build offer details for sheet
       let offerDetails = '';
+      let originalPrice: number | undefined;
+      let paidPrice = checkoutProduct.price;
+
       if (isUpsellPurchase && matchedRule) {
-        offerDetails = matchedRule.upsellDiscount
-          ? `${matchedRule.upsellDiscount}% OFF via "${matchedRule.name}"`
-          : `Upsell via "${matchedRule.name}"`;
+        originalPrice = checkoutProduct.price;
+        if (matchedRule.upsellDiscount) {
+          paidPrice = Math.round(checkoutProduct.price * (1 - matchedRule.upsellDiscount / 100));
+          offerDetails = `${matchedRule.upsellDiscount}% OFF via "${matchedRule.name}"`;
+        } else {
+          offerDetails = `Upsell via "${matchedRule.name}"`;
+        }
       }
 
       const order = await addOrder(
         { name: data.name, whatsapp: data.whatsapp, email: data.email,
-          senderBkash: data.senderBkash, product: checkoutProduct.name, price: checkoutProduct.price },
-        { orderType: isUpsellPurchase ? 'upsell' : 'direct', offerDetails }
+          senderBkash: data.senderBkash, product: checkoutProduct.name, price: paidPrice },
+        { orderType: isUpsellPurchase ? 'upsell' : 'direct', offerDetails, originalPrice }
       );
 
       setOrders(getOrders());
