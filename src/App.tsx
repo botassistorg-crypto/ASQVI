@@ -31,11 +31,23 @@ import { trackPageView, trackViewContent, trackInitiateCheckout, trackPurchase }
 
 type View = 'store' | 'product' | 'category' | 'admin-login' | 'admin-panel';
 
+// Parse URL on load to restore the correct view
+function getInitialState(): { view: View; productId: string | null; category: string } {
+  const path = window.location.pathname;
+  const productMatch = path.match(/^\/product\/(.+)/);
+  if (productMatch) return { view: 'product', productId: decodeURIComponent(productMatch[1]), category: '' };
+  const catMatch = path.match(/^\/category\/(.+)/);
+  if (catMatch) return { view: 'category', productId: null, category: decodeURIComponent(catMatch[1]) };
+  if (path === '/admin') return { view: 'admin-login', productId: null, category: '' };
+  return { view: 'store', productId: null, category: '' };
+}
+
 export default function App() {
-  const [view, setView] = useState<View>('store');
+  const initial = getInitialState();
+  const [view, setView] = useState<View>(initial.view);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [categoryPageName, setCategoryPageName] = useState('');
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [categoryPageName, setCategoryPageName] = useState(initial.category);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(initial.productId);
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [isUpsellPurchase, setIsUpsellPurchase] = useState(false);
@@ -56,6 +68,19 @@ export default function App() {
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   useEffect(() => { trackPageView(view); }, [view]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const s = getInitialState();
+      setView(s.view);
+      setSelectedProductId(s.productId);
+      setCategoryPageName(s.category);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => {
     const c = getProductsLocal(); if (c.length > 0) setProducts(c); else setLoadingProducts(true);
     fetchProductsFromSheet().then(f => { setProducts(f); setLoadingProducts(false); }).catch(() => setLoadingProducts(false));
@@ -104,9 +129,25 @@ export default function App() {
     setCheckoutOpen(true); setIsUpsellPurchase(false);
     trackInitiateCheckout({ id: offer.id, name: bundleProd.name, price: bPrice });
   };
-  const handleViewProduct = (pid: string) => { setSelectedProductId(pid); setView('product'); window.scrollTo(0, 0); const p = products.find(x => x.id === pid); if (p) trackViewContent({ id: p.id, name: p.name, price: p.price, category: p.category }); };
-  const handleBackToStore = () => { setSelectedProductId(null); setView('store'); };
-  const handleViewCategory = (cat: string) => { setCategoryPageName(cat); setView('category'); window.scrollTo(0, 0); };
+  const handleViewProduct = (pid: string) => {
+    setSelectedProductId(pid); setView('product'); window.scrollTo(0, 0);
+    window.history.pushState({}, '', '/product/' + encodeURIComponent(pid));
+    const p = products.find(x => x.id === pid);
+    if (p) {
+      document.title = p.name + ' — ' + settings.storeName;
+      trackViewContent({ id: p.id, name: p.name, price: p.price, category: p.category });
+    }
+  };
+  const handleBackToStore = () => {
+    setSelectedProductId(null); setView('store');
+    window.history.pushState({}, '', '/');
+    document.title = settings.storeName;
+  };
+  const handleViewCategory = (cat: string) => {
+    setCategoryPageName(cat); setView('category'); window.scrollTo(0, 0);
+    window.history.pushState({}, '', '/category/' + encodeURIComponent(cat));
+    document.title = cat + ' — ' + settings.storeName;
+  };
   const handleCheckoutSubmit = async (data: CustomerData) => {
     if (!checkoutProduct) return;
     try {
@@ -130,7 +171,7 @@ export default function App() {
   const handleCloseThankYou = () => { setShowThankYou(false); setIsUpsellPurchase(false); };
 
   // Admin handlers
-  const handleAdminLogin = useCallback(async (c: string) => { try { const v = await verifyPasscode(c); if (v) { setAuthenticated(true); setStoredPasscode(c); setView('admin-panel'); } return v; } catch { return false; } }, []);
+  const handleAdminLogin = useCallback(async (c: string) => { try { const v = await verifyPasscode(c); if (v) { setAuthenticated(true); setStoredPasscode(c); setView('admin-panel'); window.history.pushState({}, '', '/admin'); } return v; } catch { return false; } }, []);
   const handleUpdateStatus = useCallback((id: string, s: Order['status']) => { const ok = updateOrderStatus(id, s); if (ok) { setOrders(getOrders()); toast.success(`→ ${s}`, { icon: '✅' }); } return ok; }, []);
   const handleDeleteOrder = useCallback((id: string) => { const ok = deleteOrder(id); if (ok) { setOrders(getOrders()); toast.success('Deleted'); } return ok; }, []);
   const handleAddProduct = useCallback(async (d: Omit<Product, 'id'>) => { const p = await addProductToSheet(d); if (p) { setProducts(getProductsLocal()); toast.success('Added', { icon: '🛍️' }); } return p; }, []);
@@ -144,10 +185,13 @@ export default function App() {
   const handleDeleteOffer = useCallback(async (id: string) => { const s = await deleteOffer(id); if (s) { setOffers(getOffers()); toast.success('Deleted'); } return s; }, []);
   const handleSaveThankYou = useCallback(async (c: ThankYouConfig) => { const s = await saveThankYouConfig(c); if (s) { setThankYouConfig(c); toast.success('Saved', { icon: '🎉' }); } return s; }, []);
   const handleSaveSettings = useCallback((s: SiteSettings) => { const ok = saveSettings(s); if (ok) { setSettings(s); toast.success('Saved', { icon: '⚙️' }); } return ok; }, []);
-  const handleLogout = () => { setAuthenticated(false); setStoredPasscode(''); setView('store'); };
+  const handleLogout = () => { setAuthenticated(false); setStoredPasscode(''); setView('store'); window.history.pushState({}, '', '/'); };
 
   const to = { className: '!rounded-2xl !shadow-xl !border !border-soft-neutral !text-sm !font-medium !bg-natural-white', style: { fontFamily: 'Inter, sans-serif' } };
-  const nav = () => { if (isAuthenticated() && getStoredPasscode()) setView('admin-panel'); else setView('admin-login'); };
+  const nav = () => {
+    if (isAuthenticated() && getStoredPasscode()) { setView('admin-panel'); window.history.pushState({}, '', '/admin'); }
+    else { setView('admin-login'); window.history.pushState({}, '', '/admin'); }
+  };
 
   // Shared components
   const checkoutEl = <CheckoutModal isOpen={checkoutOpen} onClose={() => setCheckoutOpen(false)} product={checkoutProduct} bkashNumber={settings.bkashNumber} currency={settings.currency} previousCustomer={lastCustomer} isUpsell={isUpsellPurchase} onSubmit={handleCheckoutSubmit} />;
