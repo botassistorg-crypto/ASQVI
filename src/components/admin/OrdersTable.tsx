@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Trash2, ChevronDown, Filter, Package,
-  Mail, Phone, Calendar, AlertTriangle, Wallet
+  Mail, Phone, Calendar, AlertTriangle, Wallet, Layers
 } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import Modal from '../ui/Modal';
@@ -37,14 +37,36 @@ export default function OrdersTable({ orders, currency, onUpdateStatus, onDelete
 
   const currencySymbol = currency === 'BDT' ? '৳' : '$';
 
+  // ── TIER BADGE helper ─────────────────────────────────────
+  const TierBadge = ({ order }: { order: Order }) => {
+    if (!order.tierName) return null;
+    return (
+      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wider">
+          <Layers className="w-2.5 h-2.5" />
+          {order.tierName} Plan
+        </span>
+        {order.tierPaymentType && (
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+            order.tierPaymentType === 'monthly'
+              ? 'bg-amber-100 text-amber-700'
+              : 'bg-green-100 text-green-700'
+          }`}>
+            {order.tierPaymentType === 'monthly' ? '📅 Monthly' : '✓ One-Time'}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-display text-2xl font-semibold text-text-primary">Orders</h2>
           <p className="text-sm text-text-secondary mt-1">Track and manage customer orders</p>
         </div>
-
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-text-muted" />
           <select
@@ -53,56 +75,71 @@ export default function OrdersTable({ orders, currency, onUpdateStatus, onDelete
             className="px-4 py-2 rounded-full border border-warm-gray text-sm font-medium text-text-primary focus:outline-none focus:border-forest-green bg-natural-white"
           >
             <option value="All">All Status</option>
-            {statuses.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
+            {statuses.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Desktop Table */}
+      {/* ── DESKTOP TABLE ── */}
       <div className="hidden md:block bg-natural-white rounded-2xl border border-soft-neutral overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-soft-neutral/50">
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-elegant">Customer</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-elegant">Product</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-elegant">bKash Sender</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-elegant">Price</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-elegant">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-elegant">Date</th>
-                <th className="px-6 py-4 text-right text-xs font-medium text-text-muted uppercase tracking-elegant">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Product</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-wider">bKash Sender</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Price</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-soft-neutral">
               {filtered.map(order => (
                 <tr key={order.id} className="hover:bg-soft-neutral/30 transition-colors">
+
+                  {/* Customer */}
                   <td className="px-6 py-4">
                     <div>
                       <p className="text-sm font-semibold text-text-primary">{order.name}</p>
                       <div className="flex items-center gap-1 mt-1 text-xs text-text-muted">
-                        <Mail className="w-3 h-3" />
-                        {order.email}
+                        <Mail className="w-3 h-3" />{order.email}
                       </div>
                       <div className="flex items-center gap-1 mt-0.5 text-xs text-text-muted">
-                        <Phone className="w-3 h-3" />
-                        {order.whatsapp}
+                        <Phone className="w-3 h-3" />{order.whatsapp}
                       </div>
                     </div>
                   </td>
+
+                  {/* Product + Tier Badge */}
                   <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-text-primary max-w-[200px] truncate">{order.product}</p>
+                    <p className="text-sm font-medium text-text-primary max-w-[200px] truncate">
+                      {order.product}
+                    </p>
+                    <TierBadge order={order} />
                   </td>
+
+                  {/* bKash Sender */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 text-sm text-text-primary">
                       <Wallet className="w-3.5 h-3.5 text-forest-green" />
                       {order.senderBkash}
                     </div>
                   </td>
+
+                  {/* Price */}
                   <td className="px-6 py-4">
-                    <p className="text-sm font-semibold text-text-primary">{currencySymbol}{order.price.toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-text-primary">
+                      {currencySymbol}{order.price.toLocaleString()}
+                    </p>
+                    {/* Show /mo for monthly tier orders */}
+                    {order.tierPaymentType === 'monthly' && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">/ month</p>
+                    )}
                   </td>
+
+                  {/* Status */}
                   <td className="px-6 py-4">
                     <div className="relative">
                       <button
@@ -129,12 +166,16 @@ export default function OrdersTable({ orders, currency, onUpdateStatus, onDelete
                       )}
                     </div>
                   </td>
+
+                  {/* Date */}
                   <td className="px-6 py-4">
                     <span className="flex items-center gap-1.5 text-xs text-text-muted">
                       <Calendar className="w-3 h-3" />
                       {new Date(order.createdAt).toLocaleDateString()}
                     </span>
                   </td>
+
+                  {/* Delete */}
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => setDeleteConfirm(order.id)}
@@ -156,10 +197,12 @@ export default function OrdersTable({ orders, currency, onUpdateStatus, onDelete
         )}
       </div>
 
-      {/* Mobile Cards */}
+      {/* ── MOBILE CARDS ── */}
       <div className="md:hidden space-y-3">
         {filtered.map(order => (
           <div key={order.id} className="bg-natural-white rounded-2xl border border-soft-neutral p-5">
+
+            {/* Top row */}
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="font-semibold text-text-primary">{order.name}</p>
@@ -173,13 +216,27 @@ export default function OrdersTable({ orders, currency, onUpdateStatus, onDelete
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-sm text-text-primary font-medium mb-2 truncate">{order.product}</p>
-            <div className="flex items-center gap-2 text-xs text-text-muted mb-3">
+
+            {/* Product + Tier Badge */}
+            <p className="text-sm text-text-primary font-medium truncate">{order.product}</p>
+            <TierBadge order={order} />
+
+            {/* bKash sender */}
+            <div className="flex items-center gap-2 text-xs text-text-muted mt-2 mb-3">
               <Wallet className="w-3.5 h-3.5 text-forest-green" />
               Sender: {order.senderBkash}
             </div>
+
+            {/* Price + Status */}
             <div className="flex items-center justify-between">
-              <p className="font-display text-lg font-semibold text-text-primary">{currencySymbol}{order.price.toLocaleString()}</p>
+              <div>
+                <p className="font-display text-lg font-semibold text-text-primary">
+                  {currencySymbol}{order.price.toLocaleString()}
+                </p>
+                {order.tierPaymentType === 'monthly' && (
+                  <p className="text-[10px] text-amber-600">/ month</p>
+                )}
+              </div>
               <div className="relative">
                 <button
                   onClick={() => setStatusDropdown(statusDropdown === order.id ? null : order.id)}
@@ -205,6 +262,8 @@ export default function OrdersTable({ orders, currency, onUpdateStatus, onDelete
                 )}
               </div>
             </div>
+
+            {/* Date */}
             <p className="text-xs text-text-muted mt-3">
               {new Date(order.createdAt).toLocaleDateString()}
             </p>
@@ -218,12 +277,8 @@ export default function OrdersTable({ orders, currency, onUpdateStatus, onDelete
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        maxWidth="max-w-sm"
-      >
+      {/* ── DELETE MODAL ── */}
+      <Modal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} maxWidth="max-w-sm">
         <div className="text-center">
           <div className="w-16 h-16 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-5">
             <AlertTriangle className="w-8 h-8 text-danger" />
