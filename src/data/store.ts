@@ -168,13 +168,15 @@ export async function addOrder(
           orderType: options?.orderType || 'direct',
           offerDetails: options?.offerDetails || '',
           originalPrice: options?.originalPrice || '',
+          // ── NEW: tier info sent to Google Sheet ──
+          tierName: order.tierName || '',
+          tierPaymentType: order.tierPaymentType || '',
         }),
       });
     } catch (e) { console.error('Order sync failed:', e); }
   }
   return newOrder;
 }
-
 export function updateOrderStatus(id: string, status: Order['status']): boolean {
   if (!isLoggedIn()) return false;
   const orders = getOrders();
