@@ -161,9 +161,14 @@ trackInitiateCheckout({ id: product.id, name: product.name, price: finalPrice })
       let det = activeOfferDetails; let origP: number | undefined = activeOriginalPrice || undefined;
       if (isUpsellPurchase && matchedRule) { origP = upsellOriginalPrice; det = matchedRule.upsellDiscount ? `${matchedRule.upsellDiscount}% OFF via "${matchedRule.name}"` : `Upsell via "${matchedRule.name}"`; }
       const order = await addOrder(
-        { name: data.name, whatsapp: data.whatsapp, email: data.email, senderBkash: data.senderBkash, product: checkoutProduct.name, price: checkoutProduct.price },
-        { orderType: isUpsellPurchase ? 'upsell' : activeOfferDetails ? 'offer' : 'direct', offerDetails: det, originalPrice: origP }
-      );
+  { name: data.name, whatsapp: data.whatsapp, email: data.email,
+    senderBkash: data.senderBkash, product: checkoutProduct.name,
+    price: checkoutProduct.price,
+    tierName: selectedTierForCheckout?.name,
+    tierPaymentType: selectedTierForCheckout?.paymentType },
+  { orderType: isUpsellPurchase ? 'upsell' : activeOfferDetails ? 'offer' : 'direct',
+    offerDetails: det, originalPrice: origP }
+);
       setOrders(getOrders()); setLastOrder(order); setCheckoutOpen(false); setActiveOfferDetails(''); setActiveOriginalPrice(0);
       trackPurchase({ id: order.id, product: order.product, price: order.price }); setShowThankYou(true);
     } catch { toast.error('Failed to place order.'); }
