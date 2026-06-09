@@ -25,7 +25,7 @@ import {
   isAuthenticated, setAuthenticated,
   getStoredPasscode, setStoredPasscode,
 } from './data/store';
-import { Product, Order, SiteSettings, Category, Offer, ThankYouConfig } from './types';
+import { Product, Order, SiteSettings, Category, Offer, ThankYouConfig, ProductTier } from './types';
 import { Package, Loader2, Gift, ArrowRight } from 'lucide-react';
 import { trackPageView, trackViewContent, trackInitiateCheckout, trackPurchase } from './utils/tracking';
 
@@ -54,6 +54,7 @@ export default function App() {
   const [upsellOriginalPrice, setUpsellOriginalPrice] = useState(0);
   const [activeOfferDetails, setActiveOfferDetails] = useState('');
   const [activeOriginalPrice, setActiveOriginalPrice] = useState(0);
+  const [selectedTierForCheckout, setSelectedTierForCheckout] = useState<ProductTier | null>(null);
   const [showThankYou, setShowThankYou] = useState(false);
   const [showCategoryPopup, setShowCategoryPopup] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
@@ -108,15 +109,20 @@ export default function App() {
   const categoryPageProducts = categoryPageName === 'All' ? products : categoryPageName ? products.filter(p => p.category === categoryPageName) : [];
 
   // --- HANDLERS ---
-  const handleBuy = (product: Product, offer?: Offer) => {
+  const handleBuy = (product: Product, offer?: Offer, selectedTier?: ProductTier) => {
     let price = product.price; let origP = 0; let det = '';
     if (offer && offer.active) {
       if (offer.discountPercent) { origP = product.price; price = Math.round(product.price * (1 - offer.discountPercent / 100)); det = `${offer.discountPercent}% OFF — "${offer.name}"`; }
       else if (offer.discountFlat) { origP = product.price; price = Math.max(0, product.price - offer.discountFlat); det = `৳${offer.discountFlat} OFF — "${offer.name}"`; }
     }
-    setCheckoutProduct({ ...product, price }); setActiveOriginalPrice(origP); setActiveOfferDetails(det);
-    setCheckoutOpen(true); setIsUpsellPurchase(false);
-    trackInitiateCheckout({ id: product.id, name: product.name, price });
+    const finalPrice = selectedTier ? selectedTier.price : price;
+setCheckoutProduct({ ...product, price: finalPrice });
+setSelectedTierForCheckout(selectedTier || null);
+setActiveOriginalPrice(origP);
+setActiveOfferDetails(det);
+setCheckoutOpen(true);
+setIsUpsellPurchase(false);
+trackInitiateCheckout({ id: product.id, name: product.name, price: finalPrice });
   };
   const handleBuyBundle = (offer: Offer) => {
     const allIds = [...offer.productIds, ...(offer.bundleProductIds || [])];
@@ -194,7 +200,7 @@ export default function App() {
   };
 
   // Shared components
-  const checkoutEl = <CheckoutModal isOpen={checkoutOpen} onClose={() => setCheckoutOpen(false)} product={checkoutProduct} bkashNumber={settings.bkashNumber} currency={settings.currency} previousCustomer={lastCustomer} isUpsell={isUpsellPurchase} onSubmit={handleCheckoutSubmit} />;
+  const checkoutEl = <CheckoutModal isOpen={checkoutOpen} onClose={() => { setCheckoutOpen(false); setSelectedTierForCheckout(null); }} product={checkoutProduct} bkashNumber={settings.bkashNumber} currency={settings.currency} previousCustomer={lastCustomer} isUpsell={isUpsellPurchase} selectedTier={selectedTierForCheckout} onSubmit={handleCheckoutSubmit} />;
   const thankYouEl = showThankYou && lastOrder ? <ThankYouPage order={lastOrder} heading={matchedRule?.heading || thankYouConfig.defaultHeading} message={matchedRule?.message || thankYouConfig.defaultMessage} rule={matchedRule} upsellProducts={upsellProducts} currency={settings.currency} onBuyUpsell={handleBuyUpsell} onClose={handleCloseThankYou} /> : null;
 
   // --- VIEWS ---
