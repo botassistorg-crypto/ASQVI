@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Star, Check, ShoppingBag, Layers } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Star, Check, ShoppingBag, Layers, ZoomIn } from 'lucide-react';
 import { Product, Offer, ProductTier } from '../../types';
 import FormattedText from '../ui/FormattedText';
 
@@ -17,6 +17,12 @@ export default function ProductPage({
   product, relatedProducts, currency, offer, onBuy, onBack, onViewProduct,
 }: ProductPageProps) {
   const cs = currency === 'BDT' ? '৳' : '$';
+
+  // ── ALL IMAGES (main + gallery combined) ─────────────────
+  const allImages = [product.image, ...(product.images || [])].filter(Boolean);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const activeImage = allImages[activeImageIndex] || product.image;
 
   // ── TIER STATE ────────────────────────────────────────────
   const hasTiers = product.isTiered && product.tiers && product.tiers.length > 0;
@@ -52,9 +58,64 @@ export default function ProductPage({
     ? `Get ${selectedTier.name} — ${cs}${selectedTier.price.toLocaleString()}${selectedTier.paymentType === 'monthly' ? '/mo' : ''}`
     : `Acquire Now — ${cs}${hasDiscount ? discountedPrice.toLocaleString() : product.price.toLocaleString()}`;
 
+  // ── PREV / NEXT IMAGE ─────────────────────────────────────
+  const prevImage = () => setActiveImageIndex(i => (i - 1 + allImages.length) % allImages.length);
+  const nextImage = () => setActiveImageIndex(i => (i + 1) % allImages.length);
+
   return (
     <div className="min-h-screen bg-natural-white">
-      <div className="max-w-5xl mx-auto px-6 py-5">
+
+      {/* ── LIGHTBOX ── */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/70 hover:text-white text-3xl font-light"
+            onClick={() => setLightboxOpen(false)}
+          >
+            ✕
+          </button>
+          {allImages.length > 1 && (
+            <>
+              <button
+                onClick={e => { e.stopPropagation(); prevImage(); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center text-white transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); nextImage(); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center text-white transition-all"
+              >
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </>
+          )}
+          <img
+            src={activeImage}
+            alt={product.name}
+            className="max-w-full max-h-[90vh] object-contain rounded-xl"
+            onClick={e => e.stopPropagation()}
+          />
+          {/* Dots */}
+          {allImages.length > 1 && (
+            <div className="absolute bottom-4 flex gap-2">
+              {allImages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={e => { e.stopPropagation(); setActiveImageIndex(i); }}
+                  className={`w-2 h-2 rounded-full transition-all ${i === activeImageIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── BACK BUTTON ── */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-text-muted hover:text-forest-green text-sm font-medium uppercase tracking-wider transition-colors"
@@ -63,44 +124,100 @@ export default function ProductPage({
         </button>
       </div>
 
-      <section className="max-w-5xl mx-auto px-6 pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
 
-          {/* ── IMAGE ── */}
+          {/* ── IMAGE SECTION ── */}
           <div className="space-y-3">
-            <div
-              className="rounded-2xl overflow-hidden bg-soft-neutral flex items-center justify-center p-6"
-              style={{ maxHeight: '450px' }}
-            >
-              <img
-                src={product.image}
-                alt={product.name}
-                className="max-w-full max-h-[400px] object-contain"
-              />
-            </div>
-            {product.images && product.images.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto">
-                <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-soft-neutral border-2 border-forest-green flex items-center justify-center">
-                  <img src={product.image} alt="" className="max-w-full max-h-full object-contain" />
-                </div>
-                {product.images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-soft-neutral border-2 border-transparent hover:border-forest-green transition-colors cursor-pointer flex items-center justify-center"
+
+            {/* Main Image */}
+            <div className="relative group">
+              <div className="rounded-2xl overflow-hidden bg-soft-neutral flex items-center justify-center"
+                style={{ height: '400px' }}>
+                <img
+                  src={activeImage}
+                  alt={product.name}
+                  className="w-full h-full object-contain p-4 transition-all duration-300"
+                  style={{ maxHeight: '400px' }}
+                />
+              </div>
+
+              {/* Zoom button */}
+              <button
+                onClick={() => setLightboxOpen(true)}
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white"
+              >
+                <ZoomIn className="w-4 h-4 text-text-secondary" />
+              </button>
+
+              {/* Prev/Next arrows (only if multiple images) */}
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white"
                   >
-                    <img src={img} alt="" className="max-w-full max-h-full object-contain" />
-                  </div>
+                    <ArrowLeft className="w-4 h-4 text-text-secondary" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-12 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white"
+                  >
+                    <ArrowRight className="w-4 h-4 text-text-secondary" />
+                  </button>
+                </>
+              )}
+
+              {/* Image counter badge */}
+              {allImages.length > 1 && (
+                <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/40 text-white text-xs font-medium">
+                  {activeImageIndex + 1} / {allImages.length}
+                </div>
+              )}
+            </div>
+
+            {/* ── THUMBNAILS ── */}
+            {allImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {allImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`shrink-0 w-[72px] h-[72px] rounded-xl overflow-hidden border-2 transition-all duration-200 bg-soft-neutral flex items-center justify-center ${
+                      activeImageIndex === idx
+                        ? 'border-forest-green shadow-md scale-105'
+                        : 'border-transparent hover:border-forest-green/40 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`View ${idx + 1}`}
+                      className="w-full h-full object-contain p-1"
+                    />
+                  </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* ── INFO ── */}
+          {/* ── INFO SECTION ── */}
           <div className="flex flex-col">
-            <p className="text-xs font-semibold text-forest-green uppercase tracking-wider mb-2">
-              {product.category}
-            </p>
-            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-text-primary mb-3">
+
+            {/* Category + Badge */}
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs font-semibold text-forest-green uppercase tracking-wider">
+                {product.category}
+              </p>
+              {product.badge && (
+                <span className="px-2.5 py-0.5 rounded-full bg-forest-green text-natural-white text-[10px] font-semibold uppercase tracking-wider">
+                  {product.badge}
+                </span>
+              )}
+            </div>
+
+            {/* Product Name */}
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-text-primary mb-3 leading-tight">
               {product.name}
             </h1>
 
@@ -121,16 +238,20 @@ export default function ProductPage({
 
             {/* ── PRICE SECTION ── */}
             {hasTiers ? (
-              /* Tiered price — show selected tier price */
-              <div className="mb-4">
+              <div className="mb-5 p-4 rounded-2xl bg-soft-neutral">
                 {selectedTier ? (
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-display text-3xl font-semibold text-text-primary">
-                      {cs}{selectedTier.price.toLocaleString()}
-                    </span>
-                    <span className="text-sm text-text-muted">
-                      {selectedTier.paymentType === 'monthly' ? '/ month' : 'one-time'}
-                    </span>
+                  <div>
+                    <p className="text-xs text-text-muted uppercase tracking-wider mb-1">
+                      Selected Plan
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-3xl font-semibold text-text-primary">
+                        {cs}{selectedTier.price.toLocaleString()}
+                      </span>
+                      <span className="text-sm text-text-muted">
+                        {selectedTier.paymentType === 'monthly' ? '/ month' : 'one-time'}
+                      </span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-baseline gap-2">
@@ -142,10 +263,9 @@ export default function ProductPage({
                 )}
               </div>
             ) : (
-              /* Single price */
-              <div className="mb-6">
+              <div className="mb-5">
                 {hasDiscount ? (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-xl text-text-muted line-through">
                       {cs}{product.price.toLocaleString()}
                     </span>
@@ -159,18 +279,23 @@ export default function ProductPage({
                     )}
                   </div>
                 ) : (
-                  <span className="font-display text-3xl font-semibold text-text-primary">
-                    {cs}{product.price.toLocaleString()}
-                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-display text-3xl font-semibold text-text-primary">
+                      {cs}{product.price.toLocaleString()}
+                    </span>
+                    <span className="text-sm text-text-muted">one-time</span>
+                  </div>
                 )}
-                <span className="text-sm text-text-muted ml-2">one-time</span>
               </div>
             )}
+
+            {/* Divider */}
+            <div className="h-px bg-soft-neutral mb-5" />
 
             {/* Description */}
             <FormattedText
               text={product.fullDescription || product.description}
-              className="text-text-secondary leading-relaxed mb-6 text-sm"
+              className="text-text-secondary leading-relaxed mb-5 text-sm"
             />
 
             {/* ── TIER SELECTOR ── */}
@@ -182,8 +307,7 @@ export default function ProductPage({
                     Choose Your Plan
                   </h3>
                 </div>
-
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {product.tiers.map(tier => {
                     const isSelected = selectedTier?.id === tier.id;
                     return (
@@ -194,38 +318,29 @@ export default function ProductPage({
                         className={`w-full text-left rounded-2xl border-2 p-4 transition-all ${
                           isSelected
                             ? 'border-forest-green bg-forest-green/5 shadow-sm'
-                            : 'border-warm-gray bg-natural-white hover:border-forest-green/50'
+                            : 'border-warm-gray bg-natural-white hover:border-forest-green/40'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          {/* Left — name + description + features */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              {/* Radio dot */}
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
                                 isSelected ? 'border-forest-green' : 'border-gray-300'
                               }`}>
-                                {isSelected && (
-                                  <span className="w-2 h-2 rounded-full bg-forest-green block" />
-                                )}
+                                {isSelected && <span className="w-2 h-2 rounded-full bg-forest-green block" />}
                               </span>
                               <span className="text-sm font-semibold text-text-primary">
                                 {tier.name}
                               </span>
                               {tier.isPopular && (
                                 <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider">
-                                  Most Popular
+                                  ⭐ Most Popular
                                 </span>
                               )}
                             </div>
-
                             {tier.description && (
-                              <p className="text-xs text-text-muted ml-6 mb-2">
-                                {tier.description}
-                              </p>
+                              <p className="text-xs text-text-muted ml-6 mb-2">{tier.description}</p>
                             )}
-
-                            {/* Tier features */}
                             {tier.features && tier.features.length > 0 && (
                               <ul className="ml-6 space-y-1">
                                 {tier.features.map((feat, fi) => (
@@ -237,8 +352,6 @@ export default function ProductPage({
                               </ul>
                             )}
                           </div>
-
-                          {/* Right — price */}
                           <div className="text-right shrink-0">
                             <p className="font-display text-lg font-semibold text-text-primary">
                               {cs}{tier.price.toLocaleString()}
@@ -255,7 +368,7 @@ export default function ProductPage({
               </div>
             )}
 
-            {/* ── FEATURES (single price products) ── */}
+            {/* ── FEATURES (single price) ── */}
             {!hasTiers && product.features && product.features.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider mb-3">
@@ -278,22 +391,22 @@ export default function ProductPage({
             <button
               onClick={handleBuy}
               disabled={hasTiers && !selectedTier}
-              className="flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-forest-green hover:bg-forest-green-dark disabled:opacity-50 text-natural-white text-sm font-medium uppercase tracking-wider transition-all mt-auto"
+              className="flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-forest-green hover:bg-forest-green-dark disabled:opacity-50 text-natural-white text-sm font-medium uppercase tracking-wider transition-all mt-auto shadow-lg hover:shadow-xl"
             >
               <ShoppingBag className="w-4 h-4" />
               {buyLabel}
             </button>
 
             {/* Trust badges */}
-            <div className="flex flex-wrap gap-4 mt-5 text-xs text-text-muted">
-              <span className="flex items-center gap-1">
-                <Check className="w-3 h-3 text-forest-green" /> Instant Delivery
+            <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-soft-neutral text-xs text-text-muted">
+              <span className="flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-forest-green" /> Instant Delivery
               </span>
-              <span className="flex items-center gap-1">
-                <Check className="w-3 h-3 text-forest-green" /> Lifetime Access
+              <span className="flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-forest-green" /> Lifetime Access
               </span>
-              <span className="flex items-center gap-1">
-                <Check className="w-3 h-3 text-forest-green" /> Support
+              <span className="flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-forest-green" /> Support
               </span>
             </div>
           </div>
@@ -303,8 +416,11 @@ export default function ProductPage({
       {/* ── RELATED PRODUCTS ── */}
       {relatedProducts.length > 0 && (
         <section className="bg-soft-neutral py-14">
-          <div className="max-w-5xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-8">
+              <p className="text-[10px] font-semibold text-forest-green uppercase tracking-wider mb-2">
+                You May Also Like
+              </p>
               <h2 className="font-display text-xl sm:text-2xl font-semibold text-text-primary">
                 Related Products
               </h2>
@@ -314,25 +430,26 @@ export default function ProductPage({
                 <div
                   key={rp.id}
                   onClick={() => onViewProduct(rp.id)}
-                  className="group bg-natural-white rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all"
+                  className="group bg-natural-white rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all border border-soft-neutral hover:border-forest-green/20"
                 >
-                  <div
-                    className="bg-soft-neutral m-2 rounded-xl overflow-hidden flex items-center justify-center"
-                    style={{ height: '130px' }}
-                  >
+                  {/* Related product image */}
+                  <div className="bg-soft-neutral flex items-center justify-center overflow-hidden"
+                    style={{ height: '160px' }}>
                     <img
                       src={rp.image}
                       alt={rp.name}
-                      className="max-w-full max-h-full object-contain"
+                      className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
                     />
                   </div>
-                  <div className="px-3 pb-3">
-                    <h3 className="text-sm font-semibold text-text-primary line-clamp-1 group-hover:text-forest-green transition-colors">
+                  <div className="p-3">
+                    <p className="text-[10px] font-semibold text-forest-green uppercase tracking-wider mb-1">
+                      {rp.category}
+                    </p>
+                    <h3 className="text-sm font-semibold text-text-primary line-clamp-2 group-hover:text-forest-green transition-colors mb-2">
                       {rp.name}
                     </h3>
-                    <div className="flex items-center justify-between mt-2">
-                      {/* Price — handle tiered related products */}
+                    <div className="flex items-center justify-between">
                       {rp.isTiered && rp.tiers && rp.tiers.length > 0 ? (
                         <div>
                           <span className="text-[10px] text-text-muted">From </span>
@@ -345,7 +462,7 @@ export default function ProductPage({
                           {cs}{rp.price.toLocaleString()}
                         </span>
                       )}
-                      <span className="text-[10px] text-forest-green font-medium uppercase tracking-wider flex items-center gap-1">
+                      <span className="text-[10px] text-forest-green font-medium uppercase tracking-wider flex items-center gap-1 group-hover:gap-2 transition-all">
                         View <ArrowRight className="w-3 h-3" />
                       </span>
                     </div>
