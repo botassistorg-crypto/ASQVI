@@ -451,7 +451,7 @@ if (!formData.isTiered && !formData.isContactOrder && !formData.price) return;
     Chat to Order
   </button>
 </div>
-          </div
+          </div>
 
             {/* ── CONTACT ORDER FIELDS ── */}
 {formData.isContactOrder && (
