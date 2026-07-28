@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import {
   Plus, Search, Pencil, Trash2, Package, Image as ImageIcon,
   Save, Loader2, AlertTriangle, Star, DollarSign, X, Link2,
-  Upload, CheckCircle, Download, Layers, ChevronDown, ChevronUp
+  Upload, CheckCircle, Download, Layers, ChevronDown, ChevronUp,
+  MessageCircle
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { Product, Category, ProductTier } from '../../types';
@@ -44,6 +45,9 @@ const defaultProduct: Omit<Product, 'id'> = {
   features: [],
   isTiered: false,
   tiers: [],
+  isContactOrder: false,   // ← NEW
+  contactMessage: '',      // ← NEW
+  startingPrice: 0,        // ← NEW
 };
 
 const badgeOptions = ['', 'Best Seller', 'Featured', 'New', 'Popular', 'Premium'];
@@ -110,7 +114,10 @@ export default function ProductsPanel({
       relatedProducts: product.relatedProducts || [],
       features: product.features || [],
       isTiered: product.isTiered || false,
-      tiers: product.tiers || [],
+tiers: product.tiers || [],
+isContactOrder: product.isContactOrder || false,  // ← NEW
+contactMessage: product.contactMessage || '',      // ← NEW
+startingPrice: product.startingPrice || 0,         // ← NEW
     });
     setExpandedTier(null);
     setTierFeatureInputs({});
@@ -119,7 +126,7 @@ export default function ProductsPanel({
 
   const handleSave = async () => {
     if (!formData.name || !formData.image) return;
-    if (!formData.isTiered && !formData.price) return;
+if (!formData.isTiered && !formData.isContactOrder && !formData.price) return;
     if (formData.isTiered && (!formData.tiers || formData.tiers.length < 2)) {
       alert('Please add at least 2 tiers for a tiered product.');
       return;
@@ -315,11 +322,17 @@ export default function ProductsPanel({
                 </span>
               )}
               {product.isTiered && (
-                <span className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium flex items-center gap-1">
-                  <Layers className="w-3 h-3" />
-                  {product.tiers?.length || 0} Tiers
-                </span>
-              )}
+  <span className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium flex items-center gap-1">
+    <Layers className="w-3 h-3" />
+    {product.tiers?.length || 0} Tiers
+  </span>
+)}
+{product.isContactOrder && (
+  <span className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-green-600 text-white text-xs font-medium flex items-center gap-1">
+    <MessageCircle className="w-3 h-3" />
+    Chat to Order
+  </span>
+)}
             </div>
             <div className="p-5">
               <p className="text-xs font-medium text-[#4A5D4E] uppercase tracking-wider mb-2">{product.category}</p>
@@ -380,41 +393,109 @@ export default function ProductsPanel({
             <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-2 mb-3">
               Pricing Type
             </h4>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => updateField('isTiered', false)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                  !formData.isTiered
-                    ? 'border-[#4A5D4E] bg-[#4A5D4E]/5 text-[#4A5D4E]'
-                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                }`}
-              >
-                <DollarSign className="w-4 h-4" />
-                Single Price
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  updateField('isTiered', true);
-                  if (!formData.tiers || formData.tiers.length === 0) {
-                    const t1 = { ...defaultTier(), name: 'Basic' };
-                    const t2 = { ...defaultTier(), id: `tier-${Date.now() + 1}`, name: 'Pro' };
-                    updateField('tiers', [t1, t2]);
-                    setExpandedTier(t1.id);
-                  }
-                }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                  formData.isTiered
-                    ? 'border-blue-500 bg-blue-50 text-blue-600'
-                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                Tier-Based Pricing
-              </button>
-            </div>
-          </div>
+            <div className="grid grid-cols-3 gap-2">
+  {/* Single Price */}
+  <button
+    type="button"
+    onClick={() => {
+      updateField('isTiered', false);
+      updateField('isContactOrder', false);
+    }}
+    className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-medium transition-all ${
+      !formData.isTiered && !formData.isContactOrder
+        ? 'border-[#4A5D4E] bg-[#4A5D4E]/5 text-[#4A5D4E]'
+        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+    }`}
+  >
+    <DollarSign className="w-4 h-4" />
+    Single Price
+  </button>
+
+  {/* Tier-Based */}
+  <button
+    type="button"
+    onClick={() => {
+      updateField('isTiered', true);
+      updateField('isContactOrder', false);
+      if (!formData.tiers || formData.tiers.length === 0) {
+        const t1 = { ...defaultTier(), name: 'Basic' };
+        const t2 = { ...defaultTier(), id: `tier-${Date.now() + 1}`, name: 'Pro' };
+        updateField('tiers', [t1, t2]);
+        setExpandedTier(t1.id);
+      }
+    }}
+    className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-medium transition-all ${
+      formData.isTiered && !formData.isContactOrder
+        ? 'border-blue-500 bg-blue-50 text-blue-600'
+        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+    }`}
+  >
+    <Layers className="w-4 h-4" />
+    Tier-Based
+  </button>
+
+  {/* Contact to Order */}
+  <button
+    type="button"
+    onClick={() => {
+      updateField('isContactOrder', true);
+      updateField('isTiered', false);
+    }}
+    className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-medium transition-all ${
+      formData.isContactOrder
+        ? 'border-green-500 bg-green-50 text-green-600'
+        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+    }`}
+  >
+    <MessageCircle className="w-4 h-4" />
+    Chat to Order
+  </button>
+</div>
+          </div
+
+            {/* ── CONTACT ORDER FIELDS ── */}
+{formData.isContactOrder && (
+  <div className="space-y-3 p-4 rounded-xl bg-green-50 border border-green-200">
+    <p className="text-xs font-semibold text-green-700 flex items-center gap-2">
+      <MessageCircle className="w-3.5 h-3.5" />
+      Contact to Order Settings
+    </p>
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+        Starting Price (optional — e.g. 500)
+      </label>
+      <div className="relative">
+        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="number"
+          min="0"
+          placeholder="Leave empty to hide price"
+          value={formData.startingPrice || ''}
+          onChange={e => updateField('startingPrice', parseFloat(e.target.value) || 0)}
+          className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+        />
+      </div>
+      <p className="text-[10px] text-gray-400 mt-1">
+        Shows as "Starting from ৳500" on product page
+      </p>
+    </div>
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+        Custom WhatsApp Message (optional)
+      </label>
+      <textarea
+        placeholder={`Hi ASQVI! I'm interested in this service. Please tell me more.`}
+        value={formData.contactMessage || ''}
+        onChange={e => updateField('contactMessage', e.target.value)}
+        rows={2}
+        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
+      />
+      <p className="text-[10px] text-gray-400 mt-1">
+        This message auto-fills in customer WhatsApp
+      </p>
+    </div>
+  </div>
+)}
 
           {/* ── BASIC INFO ── */}
           <div className="space-y-4">
@@ -902,11 +983,11 @@ export default function ProductsPanel({
               type="button"
               onClick={handleSave}
               disabled={
-                saving ||
-                !formData.name ||
-                !formData.image ||
-                (!formData.isTiered && !formData.price) ||
-                (formData.isTiered && (formData.tiers || []).length < 2)
+  saving ||
+  !formData.name ||
+  !formData.image ||
+  (!formData.isTiered && !formData.isContactOrder && !formData.price) ||
+  (formData.isTiered && (formData.tiers || []).length < 2)
               }
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#4A5D4E] hover:bg-[#3d4e41] disabled:bg-gray-300 text-white text-sm font-medium transition-colors"
             >
