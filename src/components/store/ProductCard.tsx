@@ -1,5 +1,7 @@
-import { ArrowRight, Layers } from 'lucide-react';
+import { ArrowRight, Layers, MessageCircle } from 'lucide-react';
 import { Product, Offer } from '../../types';
+const WHATSAPP_NUMBER = '8801700524647'; // Bangladesh country code
+
 
 interface ProductCardProps {
   product: Product;
@@ -95,62 +97,84 @@ export default function ProductCard({ product, onBuy, onViewProduct, currency, o
         </p>
 
         <div className="flex items-center justify-between">
-
-          {/* ── PRICE ── */}
-          <div>
-            {hasTiers && lowestTierPrice !== null ? (
-              /* Tiered pricing */
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[10px] text-text-muted">From</span>
-                  <span className="font-display text-lg font-semibold text-text-primary">
-                    {cs}{lowestTierPrice.toLocaleString()}
-                  </span>
-                </div>
-                {/* Show popular tier payment type */}
-                {popularTier && (
-                  <p className="text-[10px] text-text-muted mt-0.5">
-                    {popularTier.paymentType === 'monthly' ? '/ month' : 'one-time'}
-                  </p>
-                )}
-              </div>
-            ) : hasDiscount ? (
-              /* Discounted single price */
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm text-text-muted line-through">
-                  {cs}{product.price.toLocaleString()}
-                </span>
-                <span className="font-display text-lg font-semibold text-amber-700">
-                  {cs}{discountedPrice.toLocaleString()}
-                </span>
-              </div>
-            ) : (
-              /* Regular single price */
-              <span className="font-display text-lg font-semibold text-text-primary">
-                {cs}{product.price.toLocaleString()}
-              </span>
-            )}
+  <div>
+    {/* Contact to Order price display */}
+    {product.isContactOrder ? (
+      <div>
+        {product.startingPrice ? (
+          <div className="flex items-baseline gap-1">
+            <span className="text-[10px] text-text-muted">From</span>
+            <span className="font-display text-lg font-semibold text-text-primary">
+              {cs}{product.startingPrice.toLocaleString()}
+            </span>
           </div>
-
-          {/* ── BUY / VIEW BUTTON ── */}
-          {hasTiers ? (
-            /* Tiered — clicking goes to product page to select tier */
-            <button
-              onClick={e => { e.stopPropagation(); onViewProduct?.(product.id); }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-blue-600 text-white text-[11px] font-medium uppercase tracking-wider hover:bg-blue-700 transition-all group/btn"
-            >
-              Plans <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
-            </button>
-          ) : (
-            /* Single price — direct buy */
-            <button
-              onClick={e => { e.stopPropagation(); onBuy(product, offer || undefined); }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-forest-green text-natural-white text-[11px] font-medium uppercase tracking-wider hover:bg-forest-green-dark transition-all group/btn"
-            >
-              Acquire <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
-            </button>
-          )}
+        ) : (
+          <span className="text-xs font-medium text-green-600">
+            Contact for Price
+          </span>
+        )}
+      </div>
+    ) : hasTiers && lowestTierPrice !== null ? (
+      <div>
+        <div className="flex items-baseline gap-1">
+          <span className="text-[10px] text-text-muted">From</span>
+          <span className="font-display text-lg font-semibold text-text-primary">
+            {cs}{lowestTierPrice.toLocaleString()}
+          </span>
         </div>
+        {popularTier && (
+          <p className="text-[10px] text-text-muted mt-0.5">
+            {popularTier.paymentType === 'monthly' ? '/ month' : 'one-time'}
+          </p>
+        )}
+      </div>
+    ) : hasDiscount ? (
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm text-text-muted line-through">
+          {cs}{product.price.toLocaleString()}
+        </span>
+        <span className="font-display text-lg font-semibold text-amber-700">
+          {cs}{discountedPrice.toLocaleString()}
+        </span>
+      </div>
+    ) : (
+      <span className="font-display text-lg font-semibold text-text-primary">
+        {cs}{product.price.toLocaleString()}
+      </span>
+    )}
+  </div>
+
+  {/* Button */}
+  {product.isContactOrder ? (
+    <button
+      onClick={e => {
+        e.stopPropagation();
+        const msg = product.contactMessage ||
+          `Hi ASQVI! I'm interested in "${product.name}". Please tell me more.`;
+        const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+      }}
+      className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-green-600 text-white text-[11px] font-medium uppercase tracking-wider hover:bg-green-700 transition-all group/btn"
+    >
+      <MessageCircle className="w-3 h-3" />
+      Chat
+    </button>
+  ) : hasTiers ? (
+    <button
+      onClick={e => { e.stopPropagation(); onViewProduct?.(product.id); }}
+      className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-blue-600 text-white text-[11px] font-medium uppercase tracking-wider hover:bg-blue-700 transition-all group/btn"
+    >
+      Plans <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+    </button>
+  ) : (
+    <button
+      onClick={e => { e.stopPropagation(); onBuy(product, offer || undefined); }}
+      className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-forest-green text-natural-white text-[11px] font-medium uppercase tracking-wider hover:bg-forest-green-dark transition-all group/btn"
+    >
+      Acquire <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+    </button>
+  )}
+</div>
       </div>
     </div>
   );
