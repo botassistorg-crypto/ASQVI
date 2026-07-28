@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Star, Check, ShoppingBag, Layers, ZoomIn } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Star, Check, ShoppingBag, Layers, ZoomIn, MessageCircle } from 'lucide-react';
 import { Product, Offer, ProductTier } from '../../types';
 import FormattedText from '../ui/FormattedText';
+const WHATSAPP_NUMBER = '8801700524647';
+
 
 interface ProductPageProps {
   product: Product;
@@ -237,57 +239,79 @@ export default function ProductPage({
             </div>
 
             {/* ── PRICE SECTION ── */}
-            {hasTiers ? (
-              <div className="mb-5 p-4 rounded-2xl bg-soft-neutral">
-                {selectedTier ? (
-                  <div>
-                    <p className="text-xs text-text-muted uppercase tracking-wider mb-1">
-                      Selected Plan
-                    </p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-display text-3xl font-semibold text-text-primary">
-                        {cs}{selectedTier.price.toLocaleString()}
-                      </span>
-                      <span className="text-sm text-text-muted">
-                        {selectedTier.paymentType === 'monthly' ? '/ month' : 'one-time'}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm text-text-muted">From</span>
-                    <span className="font-display text-3xl font-semibold text-text-primary">
-                      {cs}{Math.min(...product.tiers!.map(t => t.price)).toLocaleString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="mb-5">
-                {hasDiscount ? (
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-xl text-text-muted line-through">
-                      {cs}{product.price.toLocaleString()}
-                    </span>
-                    <span className="font-display text-3xl font-semibold text-amber-700">
-                      {cs}{discountedPrice.toLocaleString()}
-                    </span>
-                    {offer?.badge && (
-                      <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
-                        {offer.badge}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-display text-3xl font-semibold text-text-primary">
-                      {cs}{product.price.toLocaleString()}
-                    </span>
-                    <span className="text-sm text-text-muted">one-time</span>
-                  </div>
-                )}
-              </div>
-            )}
+            {product.isContactOrder ? (
+  /* Contact Order Price */
+  <div className="mb-5 p-4 rounded-2xl bg-green-50 border border-green-200">
+    <p className="text-xs text-green-600 uppercase tracking-wider font-semibold mb-1">
+      💬 Chat to Order
+    </p>
+    {product.startingPrice ? (
+      <div className="flex items-baseline gap-2">
+        <span className="text-sm text-text-muted">Starting from</span>
+        <span className="font-display text-3xl font-semibold text-text-primary">
+          {cs}{product.startingPrice.toLocaleString()}
+        </span>
+      </div>
+    ) : (
+      <p className="font-display text-xl font-semibold text-green-700">
+        Contact for Pricing
+      </p>
+    )}
+    <p className="text-xs text-green-600 mt-1">
+      Final price decided after discussion
+    </p>
+  </div>
+) : hasTiers ? (
+  <div className="mb-5 p-4 rounded-2xl bg-soft-neutral">
+    {selectedTier ? (
+      <div>
+        <p className="text-xs text-text-muted uppercase tracking-wider mb-1">
+          Selected Plan
+        </p>
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-3xl font-semibold text-text-primary">
+            {cs}{selectedTier.price.toLocaleString()}
+          </span>
+          <span className="text-sm text-text-muted">
+            {selectedTier.paymentType === 'monthly' ? '/ month' : 'one-time'}
+          </span>
+        </div>
+      </div>
+    ) : (
+      <div className="flex items-baseline gap-2">
+        <span className="text-sm text-text-muted">From</span>
+        <span className="font-display text-3xl font-semibold text-text-primary">
+          {cs}{Math.min(...product.tiers!.map(t => t.price)).toLocaleString()}
+        </span>
+      </div>
+    )}
+  </div>
+) : (
+  <div className="mb-5">
+    {hasDiscount ? (
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xl text-text-muted line-through">
+          {cs}{product.price.toLocaleString()}
+        </span>
+        <span className="font-display text-3xl font-semibold text-amber-700">
+          {cs}{discountedPrice.toLocaleString()}
+        </span>
+        {offer?.badge && (
+          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+            {offer.badge}
+          </span>
+        )}
+      </div>
+    ) : (
+      <div className="flex items-baseline gap-2">
+        <span className="font-display text-3xl font-semibold text-text-primary">
+          {cs}{product.price.toLocaleString()}
+        </span>
+        <span className="text-sm text-text-muted">one-time</span>
+      </div>
+    )}
+  </div>
+)}
 
             {/* Divider */}
             <div className="h-px bg-soft-neutral mb-5" />
@@ -387,15 +411,50 @@ export default function ProductPage({
               </div>
             )}
 
-            {/* ── BUY BUTTON ── */}
-            <button
-              onClick={handleBuy}
-              disabled={hasTiers && !selectedTier}
-              className="flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-forest-green hover:bg-forest-green-dark disabled:opacity-50 text-natural-white text-sm font-medium uppercase tracking-wider transition-all mt-auto shadow-lg hover:shadow-xl"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              {buyLabel}
-            </button>
+            {product.isContactOrder ? (
+  /* ── CONTACT TO ORDER BUTTONS ── */
+  <div className="space-y-3 mt-auto">
+    {/* Primary — WhatsApp */}
+    <a
+      href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+        product.contactMessage ||
+        `Hi ASQVI! I'm interested in "${product.name}".${product.startingPrice ? ` (Starting from ${cs}${product.startingPrice.toLocaleString()})` : ''} Please tell me more about this service.`
+      )}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium uppercase tracking-wider transition-all shadow-lg hover:shadow-xl"
+    >
+      <MessageCircle className="w-4 h-4" />
+      Chat on WhatsApp to Order
+    </a>
+
+    {/* Secondary — Book Advance (if startingPrice exists) */}
+    {product.startingPrice ? (
+      <button
+        onClick={handleBuy}
+        className="flex items-center justify-center gap-2 px-8 py-3 rounded-full border-2 border-forest-green text-forest-green hover:bg-forest-green hover:text-natural-white text-sm font-medium uppercase tracking-wider transition-all"
+      >
+        <ShoppingBag className="w-4 h-4" />
+        Book Advance — {cs}{product.startingPrice.toLocaleString()}
+      </button>
+    ) : null}
+
+    {/* Info note */}
+    <p className="text-xs text-text-muted text-center">
+      💬 Chat with us first to discuss your requirements
+    </p>
+  </div>
+) : (
+  /* ── NORMAL BUY BUTTON ── */
+  <button
+    onClick={handleBuy}
+    disabled={hasTiers && !selectedTier}
+    className="flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-forest-green hover:bg-forest-green-dark disabled:opacity-50 text-natural-white text-sm font-medium uppercase tracking-wider transition-all mt-auto shadow-lg hover:shadow-xl"
+  >
+    <ShoppingBag className="w-4 h-4" />
+    {buyLabel}
+  </button>
+)}
 
             {/* Trust badges */}
             <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-soft-neutral text-xs text-text-muted">
