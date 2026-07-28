@@ -26,8 +26,11 @@ export interface Product {
   features?: string[];           // Product features/highlights (single price)
 
   // --- TIER PRICING (optional — only for tiered products) ---
-  isTiered?: boolean;            // true = tiered product, false/undefined = single price
-  tiers?: ProductTier[];         // Array of tiers (2-4 tiers)
+ isTiered?: boolean;
+tiers?: ProductTier[];
+isContactOrder?: boolean;        // ← NEW: Chat to order mode
+contactMessage?: string;         // ← NEW: Custom WhatsApp message
+startingPrice?: number;          // ← NEW: "Starting from ৳X" display         // Array of tiers (2-4 tiers)
 }
 
 export interface Order {
